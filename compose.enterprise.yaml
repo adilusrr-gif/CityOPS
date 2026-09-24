@@ -1,0 +1,149 @@
+# Local integration only: two stateless app processes and ONE PostgreSQL on ONE host.
+# This demonstrates shared sessions and app-process loss, not infrastructure or DB high availability.
+x-app: &app
+  build: .
+  image: cityquest:local-v7
+  init: true
+  user: '1000:1000'
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ['/tmp:rw,noexec,nosuid,size=64m,mode=1770,uid=1000,gid=1000']
+  stop_grace_period: 30s
+  restart: unless-stopped
+  pids_limit: 128
+  mem_limit: 768m
+  cpus: 1.0
+  networks: [backend, frontend]
+  environment: &runtime-env
+    NODE_ENV: development
+    HOST: 0.0.0.0
+    PORT: '3000'
+    PUBLIC_ORIGIN: http://localhost:8080
+    COOKIE_SECURE: 'false'
+    TRUST_PROXY: none
+    PGSSLMODE: disable
+    DATABASE_URL: postgresql://cityquest_app:${CQ_APP_PASSWORD:?Generate .env.enterprise.local}@postgres:5432/cityquest
+    DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Generate .env.enterprise.local}
+    AUDIT_HMAC_KEY: ${AUDIT_HMAC_KEY:?Generate .env.enterprise.local}
+    SESSION_IDLE_MINUTES: '30'
+    JSON_LOGS: 'true'
+    BILLING_MANUAL_ENABLED: ${BILLING_MANUAL_ENABLED:-false}
+    BILLING_PLUS_KZT: ${BILLING_PLUS_KZT:-1490}
+    BILLING_BUSINESS_START_KZT: ${BILLING_BUSINESS_START_KZT:-14990}
+    BILLING_BUSINESS_PRO_KZT: ${BILLING_BUSINESS_PRO_KZT:-49990}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_PET_MODEL: ${OPENAI_PET_MODEL:-}
+    PET_AI_GLOBAL_DAILY_LIMIT: ${PET_AI_GLOBAL_DAILY_LIMIT:-1000}
+    PET_AI_TIMEOUT_MS: ${PET_AI_TIMEOUT_MS:-20000}
+    PHOTO_STORAGE_LIMIT_MB: ${PHOTO_STORAGE_LIMIT_MB:-100}
+    PHOTO_DAILY_UPLOAD_LIMIT: ${PHOTO_DAILY_UPLOAD_LIMIT:-5}
+    PHOTO_RETAINED_LIMIT: ${PHOTO_RETAINED_LIMIT:-20}
+    SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+    PRIVACY_URL: ${PRIVACY_URL:-}
+    TERMS_URL: ${TERMS_URL:-}
+    BILLING_CONTACT_EMAIL: ${BILLING_CONTACT_EMAIL:-}
+    MAP_RESOURCE_ORIGINS: ${MAP_RESOURCE_ORIGINS:-}
+    HTTP_MAX_INFLIGHT: ${HTTP_MAX_INFLIGHT:-128}
+    HTTP_UPLOAD_CONCURRENCY: ${HTTP_UPLOAD_CONCURRENCY:-2}
+    HTTP_BODY_TIMEOUT_MS: ${HTTP_BODY_TIMEOUT_MS:-15000}
+    HTTP_RESPONSE_TIMEOUT_MS: ${HTTP_RESPONSE_TIMEOUT_MS:-45000}
+    HTTP_JSON_LIMIT_KB: ${HTTP_JSON_LIMIT_KB:-64}
+    PASSWORD_KDF_CONCURRENCY: ${PASSWORD_KDF_CONCURRENCY:-2}
+    RATE_LIMIT_MAX_KEYS: ${RATE_LIMIT_MAX_KEYS:-10000}
+    GAME_GPS_MAX_AGE_SECONDS: ${GAME_GPS_MAX_AGE_SECONDS:-90}
+    GAME_GPS_MAX_ACCURACY_METERS: ${GAME_GPS_MAX_ACCURACY_METERS:-80}
+    TERRITORY_DAILY_VISIT_LIMIT: ${TERRITORY_DAILY_VISIT_LIMIT:-10}
+    ADVENTURE_PET_XP: ${ADVENTURE_PET_XP:-20}
+    PHOTO_DISCOVERY_XP: ${PHOTO_DISCOVERY_XP:-20}
+    PHOTO_PET_XP: ${PHOTO_PET_XP:-10}
+    PHOTO_VOTER_MIN_AGE_HOURS: ${PHOTO_VOTER_MIN_AGE_HOURS:-24}
+    PG_POOL_QUEUE_LIMIT: ${PG_POOL_QUEUE_LIMIT:-20}
+    PG_CONNECTION_TIMEOUT_MS: ${PG_CONNECTION_TIMEOUT_MS:-5000}
+    PG_STATEMENT_TIMEOUT_MS: ${PG_STATEMENT_TIMEOUT_MS:-15000}
+    PG_LOCK_TIMEOUT_MS: ${PG_LOCK_TIMEOUT_MS:-5000}
+    PG_IDLE_TRANSACTION_TIMEOUT_MS: ${PG_IDLE_TRANSACTION_TIMEOUT_MS:-30000}
+  depends_on:
+    grants: {condition: service_completed_successfully}
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+services:
+  postgres:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env.enterprise.local}
+      CQ_OWNER_PASSWORD: ${CQ_OWNER_PASSWORD:?Generate .env.enterprise.local}
+      CQ_APP_PASSWORD: ${CQ_APP_PASSWORD:?Generate .env.enterprise.local}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - enterprise-pg:/var/lib/postgresql/data
+      - ./deploy/local/init-postgres.sh:/docker-entrypoint-initdb.d/10-cityquest.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d postgres']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks: [backend]
+    restart: unless-stopped
+    shm_size: 256m
+    mem_limit: 1g
+  migrate:
+    <<: *app
+    restart: 'no'
+    command: [node, scripts/migrate-postgres.mjs, --seed]
+    environment:
+      <<: *runtime-env
+      DATABASE_URL: postgresql://cityquest_owner:${CQ_OWNER_PASSWORD:?Generate .env.enterprise.local}@postgres:5432/cityquest
+    depends_on:
+      postgres: {condition: service_healthy}
+  grants:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command: [sh, -ec, 'exec psql "$$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f /sql/grants.sql']
+    environment:
+      DATABASE_URL: postgresql://cityquest_owner:${CQ_OWNER_PASSWORD:?Generate .env.enterprise.local}@postgres:5432/cityquest
+      PGSSLMODE: disable
+    volumes:
+      - ./deploy/k8s/grants/grants.sql:/sql/grants.sql:ro
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [backend]
+  bootstrap:
+    <<: *app
+    profiles: [tools]
+    restart: 'no'
+    command: [node, scripts/admin-postgres.mjs, --bootstrap]
+    environment:
+      <<: *runtime-env
+      DATABASE_URL: postgresql://cityquest_owner:${CQ_OWNER_PASSWORD:?Generate .env.enterprise.local}@postgres:5432/cityquest
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Generate .env.enterprise.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Generate .env.enterprise.local}
+  app1:
+    <<: *app
+  app2:
+    <<: *app
+  proxy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports: ['127.0.0.1:8080:8080']
+    volumes:
+      - ./deploy/local/Caddyfile:/etc/caddy/Caddyfile:ro
+    tmpfs: ['/data:uid=1000,gid=1000,mode=700', '/config:uid=1000,gid=1000,mode=700']
+    depends_on:
+      app1: {condition: service_healthy}
+      app2: {condition: service_healthy}
+    networks: [frontend]
+    restart: unless-stopped
+networks:
+  backend: {internal: true}
+  frontend: {}
+volumes:
+  enterprise-pg:

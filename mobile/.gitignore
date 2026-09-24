@@ -1,0 +1,14 @@
+node_modules/
+www/
+.env*
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+ios/**/xcuserdata/
+ios/**/DerivedData/
+ios/**/.build/

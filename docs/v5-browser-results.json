@@ -1,0 +1,44 @@
+{
+  "version": "0.5.0",
+  "testedAt": "2026-09-23T19:52:18.396Z",
+  "database": "Real SQLite HTTP server; isolated generated QA data",
+  "browser": "Chromium 134 / Playwright 1.51.1",
+  "viewports": [
+    1440,
+    390,
+    320
+  ],
+  "map": "Real map resources through Node fetch and existing tile cache",
+  "checks": [
+    "Public mountain pilot is visibly draft with source elevations and no checkin action",
+    "Ordered urban checkpoints persist and reward only completion",
+    "Team territory visit changes leaderboard and prevents second daily click",
+    "Admin can publish reviewed mountain points and close them via real forms",
+    "Admin creates published contest with explicit device-local dates",
+    "Real file upload resizes camera image, obtains consent and displays private pending JPEG",
+    "Admin approves private image, public gallery displays stripped JPEG and author gains XP",
+    "Eligible viewer votes once; competition exposes rank and own vote",
+    "Report reaches moderator with exact photo lookup and resolution",
+    "Owner withdraws image and file becomes inaccessible",
+    "Astana switch uses separate city data and mutation query",
+    "Astana admin can update routes and create active zones without cross-city errors",
+    "390/320px adventures and eight-item admin navigation have no page overflow",
+    "Owned-photo pagination traverses 41 withdrawn records, preserves city filter and allows old retained image withdrawal to free quota"
+  ],
+  "errors": [],
+  "screenshots": [
+    "mountains-390.png",
+    "territories-390.png",
+    "photo-pending-390.png",
+    "photo-gallery-390.png",
+    "contest-320.png",
+    "admin-390.png",
+    "admin-320.png"
+  ],
+  "status": "passed",
+  "passed": 14,
+  "paginationTest": {
+    "testedAt": "2026-09-23T19:55:14.821Z",
+    "scope": "Real SQLite HTTP, generated image and 41 metadata tombstones; map style fixture irrelevant to gallery flow"
+  }
+}

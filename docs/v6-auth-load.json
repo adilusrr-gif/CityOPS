@@ -1,0 +1,240 @@
+{
+  "testedAt": "2026-09-23T20:29:17.440Z",
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "availableParallelism": 8
+  },
+  "method": {
+    "rounds": 3,
+    "concurrentLogins": 20,
+    "healthProbeIntervalMs": 10,
+    "server": "Separate Node child for every trial; real HTTP on loopback; driver outside server event loop",
+    "fixture": "Fresh SQLite :memory:, 20 synthetic accounts with one precomputed scrypt hash; no production data or OSM snapshots",
+    "rateLimits": "One login per account, 20 total per fresh server (under 15/account and 25/IP login limits)",
+    "currentKdfConcurrency": 2,
+    "currentKdfQueue": 0,
+    "baselineArchive": "city-quest-v5-adventures-photo-contests.zip",
+    "baselineArchiveSha256": "cc25d6fa434d3213f84ea7bb52c14f42d26ffb8bd8754acc719e1c68048da51e",
+    "baselineSelectedSourceFiles": 38,
+    "dependencyScope": "Archived v0.5 source; same installed dependencies and Node executable as current; source/package files only extracted",
+    "eventLoopMeasurement": "Node monitorEventLoopDelay 10ms resolution, reset before burst, measured through 30ms cooldown"
+  },
+  "scope": "Local regression evidence of responsiveness and explicit bounded overload. Not production capacity, end-user latency, throughput improvement, HA, network or PostgreSQL performance evidence. Other workspace work may affect absolute timings.",
+  "summary": {
+    "v5-baseline": {
+      "loginStatuses": {
+        "200": 60
+      },
+      "healthLatency": {
+        "count": 232,
+        "p50Ms": 407.62,
+        "p95Ms": 755.08,
+        "maxMs": 828.93
+      },
+      "worstEventLoopDelayMs": 769.13,
+      "healthFailures": 0
+    },
+    "v6-current": {
+      "loginStatuses": {
+        "200": 6,
+        "503": 54
+      },
+      "healthLatency": {
+        "count": 19,
+        "p50Ms": 5.5,
+        "p95Ms": 49.26,
+        "maxMs": 49.26
+      },
+      "worstEventLoopDelayMs": 53.77,
+      "healthFailures": 0
+    }
+  },
+  "trials": [
+    {
+      "label": "v5-baseline",
+      "round": 1,
+      "version": "0.5.0",
+      "burstWallMs": 831.17,
+      "loginStatuses": {
+        "200": 20
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 448.65,
+        "p95Ms": 786.72,
+        "maxMs": 828.09
+      },
+      "healthLatency": {
+        "count": 82,
+        "p50Ms": 427.76,
+        "p95Ms": 790.21,
+        "maxMs": 828.93
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 769.13,
+        "maxMs": 769.13,
+        "utilization": 0.96
+      },
+      "rssMiBAfter": 97.1,
+      "errors": []
+    },
+    {
+      "label": "v6-current",
+      "round": 1,
+      "version": "0.5.0",
+      "burstWallMs": 70.3,
+      "loginStatuses": {
+        "200": 2,
+        "503": 18
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 21.29,
+        "p95Ms": 60.65,
+        "maxMs": 70.02
+      },
+      "healthLatency": {
+        "count": 7,
+        "p50Ms": 5.5,
+        "p95Ms": 27.98,
+        "maxMs": 27.98
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 20.22,
+        "maxMs": 20.22,
+        "utilization": 0.36
+      },
+      "rssMiBAfter": 64.24,
+      "errors": []
+    },
+    {
+      "label": "v6-current",
+      "round": 2,
+      "version": "0.5.0",
+      "burstWallMs": 61.94,
+      "loginStatuses": {
+        "200": 2,
+        "503": 18
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 24.89,
+        "p95Ms": 57.92,
+        "maxMs": 61.89
+      },
+      "healthLatency": {
+        "count": 7,
+        "p50Ms": 20.48,
+        "p95Ms": 49.26,
+        "maxMs": 49.26
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 53.77,
+        "maxMs": 53.77,
+        "utilization": 0.65
+      },
+      "rssMiBAfter": 65.09,
+      "errors": []
+    },
+    {
+      "label": "v5-baseline",
+      "round": 2,
+      "version": "0.5.0",
+      "burstWallMs": 786.83,
+      "loginStatuses": {
+        "200": 20
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 426.26,
+        "p95Ms": 746.86,
+        "maxMs": 785.67
+      },
+      "healthLatency": {
+        "count": 75,
+        "p50Ms": 399.62,
+        "p95Ms": 745.76,
+        "maxMs": 778.01
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 44.5,
+        "maxMs": 44.56,
+        "utilization": 0.96
+      },
+      "rssMiBAfter": 97.53,
+      "errors": []
+    },
+    {
+      "label": "v5-baseline",
+      "round": 3,
+      "version": "0.5.0",
+      "burstWallMs": 767.82,
+      "loginStatuses": {
+        "200": 20
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 389.05,
+        "p95Ms": 724.64,
+        "maxMs": 766.96
+      },
+      "healthLatency": {
+        "count": 75,
+        "p50Ms": 389.89,
+        "p95Ms": 731.65,
+        "maxMs": 761.07
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 725.09,
+        "maxMs": 725.09,
+        "utilization": 0.96
+      },
+      "rssMiBAfter": 97.31,
+      "errors": []
+    },
+    {
+      "label": "v6-current",
+      "round": 3,
+      "version": "0.5.0",
+      "burstWallMs": 50.88,
+      "loginStatuses": {
+        "200": 2,
+        "503": 18
+      },
+      "loginLatency": {
+        "count": 20,
+        "p50Ms": 19.18,
+        "p95Ms": 45.67,
+        "maxMs": 50.56
+      },
+      "healthLatency": {
+        "count": 5,
+        "p50Ms": 2.1,
+        "p95Ms": 14.56,
+        "maxMs": 14.56
+      },
+      "healthFailures": 0,
+      "retryAfterOnEvery503": true,
+      "eventLoopDelay": {
+        "p95Ms": 13.92,
+        "maxMs": 13.92,
+        "utilization": 0.35
+      },
+      "rssMiBAfter": 63.05,
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-09-23T20:28:50.541Z",
+  "node": "v24.19.0",
+  "engine": "node:sqlite in-memory",
+  "limitations": "Local warm-cache query microbenchmark only; excludes HTTP/auth/network, disk, native PostgreSQL, concurrency and HA. Times vary with the host.",
+  "organizations": [
+    {
+      "city_id": "almaty",
+      "count": 8346
+    },
+    {
+      "city_id": "astana",
+      "count": 4782
+    }
+  ],
+  "explored_fixture": 20000,
+  "iterations": 50,
+  "before_indexes": {
+    "catalog_first_500": {
+      "median_ms": 4.8983,
+      "p95_ms": 7.1136,
+      "plan": [
+        "SEARCH organizations USING INDEX org_city_status (city_id=? AND status=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    },
+    "catalog_after_8000": {
+      "median_ms": 2.7271,
+      "p95_ms": 3.0912,
+      "plan": [
+        "SEARCH organizations USING INDEX org_city_status (city_id=? AND status=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    },
+    "admin_first_50": {
+      "median_ms": 2.6243,
+      "p95_ms": 3.1526,
+      "plan": [
+        "SEARCH organizations USING INDEX org_city_status (city_id=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    },
+    "exploration_after_15000": {
+      "median_ms": 0.2185,
+      "p95_ms": 0.4293,
+      "plan": [
+        "SEARCH explored USING INDEX sqlite_autoindex_explored_1 (user_id=? AND cell>?)"
+      ]
+    }
+  },
+  "after_indexes": {
+    "catalog_first_500": {
+      "median_ms": 0.7572,
+      "p95_ms": 0.9303,
+      "plan": [
+        "SEARCH organizations USING INDEX org_catalog_page (city_id=? AND status=?)"
+      ]
+    },
+    "catalog_after_8000": {
+      "median_ms": 0.1818,
+      "p95_ms": 0.2189,
+      "plan": [
+        "SEARCH organizations USING INDEX org_catalog_page (city_id=? AND status=? AND (name,id)>(?,?))"
+      ]
+    },
+    "admin_first_50": {
+      "median_ms": 0.066,
+      "p95_ms": 0.1048,
+      "plan": [
+        "SEARCH organizations USING INDEX org_manage_page (city_id=?)"
+      ]
+    },
+    "exploration_after_15000": {
+      "median_ms": 0.268,
+      "p95_ms": 0.5519,
+      "plan": [
+        "SEARCH explored USING COVERING INDEX explored_page (user_id=? AND city_id=? AND cell>?)"
+      ]
+    }
+  },
+  "response_cells_bytes": {
+    "previous_unbounded": 280011,
+    "bounded_first_page": 7051
+  }
+}

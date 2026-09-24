@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cityquest
+resources:
+  - ../foundation
+  - application.yaml
+  - networking.yaml
+images:
+  - name: cityquest
+    newName: ghcr.io/YOUR_ORGANIZATION/cityquest
+    newTag: '0.8.0'

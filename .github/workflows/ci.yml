@@ -1,0 +1,70 @@
+name: Application, PostgreSQL and deployment checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_DB: cityquest_ci
+          POSTGRES_USER: cityquest_ci
+          POSTGRES_PASSWORD: ci-only-ephemeral-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cityquest_ci -d cityquest_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Syntax checks
+        run: find src scripts public tests deploy -type f \( -name '*.mjs' -o -name '*.js' \) -not -path 'public/vendor/*' -print0 | xargs -0 -n1 node --check
+      - run: npm test
+      - name: Deployment secret generator tests
+        run: node --test deploy/*.test.mjs
+      - name: PostgreSQL integration (native server required, no silent WASM fallback)
+        env:
+          PG_TEST_URL: postgresql://cityquest_ci:ci-only-ephemeral-password@127.0.0.1:5432/cityquest_ci
+          PG_TEST_REQUIRED: 'true'
+          PGSSLMODE: disable
+        run: npm run test:enterprise
+      - name: Mobile shared build
+        working-directory: mobile
+        run: npm ci && CITYQUEST_API_ORIGIN=https://cityquest.example npm run sync
+      - name: Render Kubernetes manifests
+        run: |
+          for part in foundation base jobs grants bootstrap cnpg cnpg-restore external-secrets monitoring; do
+            kubectl kustomize "deploy/k8s/$part" > "/tmp/cityquest-$part.yaml"
+          done
+      - name: Build production image
+        run: docker build -t cityquest:ci .
+      - name: Verify native image decoder in production image
+        run: >-
+          docker run --rm cityquest:ci node --input-type=module -e
+          "import sharp from 'sharp'; const image = await sharp({create:{width:2,height:2,channels:3,background:'black'}}).jpeg().toBuffer(); if (!image.length) process.exit(1);"
+      - name: Validate Compose and run two-process smoke
+        run: |
+          node deploy/local/init-env.mjs
+          docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml config --quiet
+          docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml up --build --wait --wait-timeout 180 app1 app2 proxy
+          curl --fail --retry 5 --retry-all-errors http://127.0.0.1:8080/api/ready
+          docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml stop app1
+          sleep 4
+          curl --fail --retry 5 --retry-all-errors http://127.0.0.1:8080/api/ready
+          curl --fail http://127.0.0.1:8080/api/config?city=astana
+      - name: Shut down disposable integration services
+        if: always()
+        run: |
+          if [ -f .env.enterprise.local ]; then
+            docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml down --volumes --remove-orphans
+            rm .env.enterprise.local
+          fi

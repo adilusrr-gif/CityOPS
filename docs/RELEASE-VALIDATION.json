@@ -1,0 +1,67 @@
+{
+  "version": "0.8.0",
+  "tested_at": "2026-09-24",
+  "node": "24.19.0",
+  "tests": {
+    "sqlite_shared": {
+      "pass": 239,
+      "fail": 0,
+      "skip": 0
+    },
+    "postgresql": {
+      "pass": 141,
+      "fail": 0,
+      "skip": 3,
+      "engine": "PGlite WASM; serialized transactions, deterministic application barriers; no native concurrency or HA claim",
+      "native_required_skips": [
+        "SKIP LOCKED concurrent maintenance workers",
+        "audit repeatable-read with concurrent writer",
+        "rate admission skips concurrently refreshed counter"
+      ]
+    },
+    "deployment": {
+      "pass": 4,
+      "fail": 0,
+      "skip": 0
+    },
+    "total_pass": 384
+  },
+  "browser": {
+    "new_review_checks": 7,
+    "pwa_and_compiled_bundle_checks": 6,
+    "javascript_errors": 0,
+    "api": "Deterministic API fixtures; real Chromium DOM and MapLibre/Three assets",
+    "native_bridge": "Capacitor custom-platform/web-plugin simulation",
+    "historical_checks_counted": false
+  },
+  "schema": {
+    "sqlite": 5,
+    "postgresql": 6,
+    "changed_from_v7": false,
+    "migration_bytes_verified": true
+  },
+  "native_build": {
+    "version": "0.8.0",
+    "build": 8,
+    "api_origin": "https://cityquest.example",
+    "shared_bundle_and_sync": "passed",
+    "shared_files_compared": 18,
+    "apk_ipa_built": false
+  },
+  "production_dependency_audit": {
+    "command": "npm audit --omit=dev --ignore-scripts --package-lock-only --json",
+    "root_known_vulnerabilities": 0,
+    "mobile_known_vulnerabilities": 0
+  },
+  "review": "ULTRACODE-REVIEW.md",
+  "confirmed_fixed_findings": 15,
+  "test_reliability_fix": "Replaced scheduler-dependent setImmediate KDF assertion with actual SCRYPTREQUEST callback and microtask observation; production KDF unchanged",
+  "production_ready": false,
+  "native_postgres_tested": false,
+  "cluster_deployed": false,
+  "live_ai_tested": false,
+  "payment_processor_connected": false,
+  "native_devices_tested": false,
+  "ci_run_here": false,
+  "git_push": false
+}

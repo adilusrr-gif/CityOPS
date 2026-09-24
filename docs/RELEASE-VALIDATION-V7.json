@@ -1,0 +1,59 @@
+{
+  "version": "0.7.0",
+  "tested_at": "2026-09-24",
+  "node": "24.19.0",
+  "tests": {
+    "sqlite_shared": {
+      "pass": 214,
+      "fail": 0,
+      "skip": 0
+    },
+    "postgresql": {
+      "pass": 122,
+      "fail": 0,
+      "skip": 2,
+      "engine": "PGlite WASM, serialized transactions; pg.Pool startup/queue tested through pg.Client and PGlite socket",
+      "native_required_skips": [
+        "SKIP LOCKED concurrent workers",
+        "audit repeatable-read with concurrent writer"
+      ]
+    },
+    "deployment": {
+      "pass": 4,
+      "fail": 0,
+      "skip": 0
+    },
+    "total_pass": 340
+  },
+  "browser": {
+    "new_review_scenarios": 11,
+    "pwa_and_final_bundle": 6,
+    "javascript_errors": 0,
+    "historical_v6_checks_counted": false
+  },
+  "schema": {
+    "sqlite": 5,
+    "postgresql": 6,
+    "changed_from_v6": false
+  },
+  "native_build": {
+    "version": "0.7.0",
+    "build": 7,
+    "api_origin": "https://cityquest.example",
+    "shared_bundle_and_sync": "passed",
+    "apk_ipa_built": false
+  },
+  "production_dependency_audit": {
+    "command": "npm audit --omit=dev --ignore-scripts --package-lock-only --json",
+    "known_vulnerabilities": 0
+  },
+  "review": "ULTRACODE-REVIEW.md",
+  "production_ready": false,
+  "native_postgres_tested": false,
+  "cluster_deployed": false,
+  "live_ai_tested": false,
+  "payment_processor_connected": false,
+  "native_devices_tested": false,
+  "ci_run_here": false,
+  "git_push": false
+}

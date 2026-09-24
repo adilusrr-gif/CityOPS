@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cityquest-grants-v8
+  namespace: cityquest
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cityquest-maintenance
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: grants
+          image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+          command: [sh, -ec]
+          args: ['exec psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f /sql/grants.sql']
+          envFrom:
+            - secretRef:
+                name: cityquest-migration
+          env:
+            - {name: PGSSLMODE, value: verify-full}
+            - {name: PGSSLROOTCERT, value: /run/secrets/postgres/ca.crt}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 128Mi}
+          volumeMounts:
+            - {name: postgres-ca, mountPath: /run/secrets/postgres, readOnly: true}
+            - {name: sql, mountPath: /sql, readOnly: true}
+      volumes:
+        - name: postgres-ca
+          secret: {secretName: cityquest-pg-ca, defaultMode: 0444}
+        - name: sql
+          configMap: {name: cityquest-grants}

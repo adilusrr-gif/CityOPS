@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      DATABASE_PATH: /app/data/almaty.sqlite
+    volumes:
+      - almaty-data:/app/data
+    restart: unless-stopped
+    init: true
+volumes:
+  almaty-data:

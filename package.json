@@ -1,0 +1,41 @@
+{
+  "name": "city-quest",
+  "version": "0.8.0",
+  "private": true,
+  "description": "City Quest: Almaty and Astana, shared PostgreSQL, OIDC SSO, mobile Android/iOS and HA deployment",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/entry.mjs",
+    "dev": "node --watch --env-file-if-exists=.env src/entry.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "admin": "node --env-file-if-exists=.env scripts/admin.mjs",
+    "import:osm": "node --env-file-if-exists=.env scripts/import-osm.mjs",
+    "vendor": "node scripts/vendor.mjs",
+    "backup": "node --env-file-if-exists=.env scripts/backup.mjs",
+    "restore": "node --env-file-if-exists=.env scripts/restore.mjs",
+    "load:test": "node scripts/load-test.mjs",
+    "env:production": "node scripts/init-env.mjs",
+    "start:enterprise": "node --env-file=.env.enterprise src/entry.mjs",
+    "db:migrate": "node --env-file-if-exists=.env.enterprise scripts/migrate-postgres.mjs",
+    "db:import-sqlite": "node --env-file-if-exists=.env.enterprise scripts/import-sqlite-postgres.mjs",
+    "admin:enterprise": "node --env-file-if-exists=.env.enterprise scripts/admin-postgres.mjs",
+    "test:enterprise": "node --test --test-concurrency=1 tests/enterprise/*.test.mjs",
+    "test:all": "npm test && npm run test:enterprise",
+    "mobile:build": "npm --prefix mobile run build",
+    "oidc:link": "node --env-file-if-exists=.env.enterprise scripts/link-oidc.mjs",
+    "release:check": "node --env-file-if-exists=.env.enterprise scripts/production-check.mjs"
+  },
+  "dependencies": {
+    "openid-client": "6.8.8",
+    "pg": "8.23.0",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
+    "jose": "6.2.12"
+  }
+}

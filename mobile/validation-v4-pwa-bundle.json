@@ -1,0 +1,44 @@
+{
+  "version": "0.4.0",
+  "tested_at": "2026-09-23T19:35:39.699Z",
+  "scope": "Chromium PWA and compiled Capacitor bundle in web fallback; no device or store build",
+  "checks": [
+    "PWA installs and controls page; cache contains shell only",
+    "Offline PWA renders shell and connection error, no cached quests/user/reward",
+    "PWA retry reconnects without reloading or fabricating progress",
+    "Compiled Capacitor bundle executes in Chromium web fallback, Astana switch at 320px",
+    "Compiled mobile bundle registers player, adopts pet and persists care XP at 320px"
+  ],
+  "errors": [],
+  "cache": {
+    "names": [
+      "cityquest-shell-0.4.0-1"
+    ],
+    "paths": [
+      "/",
+      "/index.html",
+      "/app.js",
+      "/map.js",
+      "/platform.js",
+      "/styles.css",
+      "/companion.js",
+      "/companion.css",
+      "/icon.svg",
+      "/manifest.webmanifest",
+      "/icons/icon-192.png",
+      "/icons/icon-512.png",
+      "/icons/maskable-512.png",
+      "/vendor/maplibre-gl.js",
+      "/vendor/maplibre-gl.css",
+      "/vendor/three.module.js",
+      "/vendor/three.core.js"
+    ]
+  },
+  "result": "passed",
+  "synchronized_native_assets": {
+    "mobile.js": "e05c3a0dbbe183887a29c9541bcc0e840f5e9727475923f259987e23a838360c",
+    "companion.css": "b99324ef1f1268d6b18bf0930c282f7d31556528dc2faf73a556858b585a76e8",
+    "index.html": "707df9d08edd5906dddf28b32f4e9039950c2f3a6fd8ad69f15583f7f22a8cd1",
+    "build-info.json": "caac1104edf08a46d12147b3726b5ecd0fde48821ed0bc87ec8ae57d944208c4"
+  }
+}

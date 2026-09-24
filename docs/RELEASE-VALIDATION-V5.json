@@ -1,0 +1,46 @@
+{
+  "version": "0.5.0",
+  "tested_at": "2026-09-23",
+  "node": "24.19.0",
+  "tests": {
+    "sqlite_shared": {
+      "pass": 143,
+      "fail": 0
+    },
+    "postgresql": {
+      "pass": 87,
+      "fail": 0,
+      "skip": 1,
+      "engine": "PGlite WASM, serialized transactions"
+    },
+    "deployment": {
+      "pass": 4,
+      "fail": 0
+    },
+    "total_pass": 234
+  },
+  "browser": {
+    "features": 14,
+    "pwa_and_bundle": 6
+  },
+  "schema": {
+    "sqlite": 4,
+    "postgresql": 5
+  },
+  "native_build": {
+    "version": "0.5.0",
+    "build": 5,
+    "api_origin": "https://cityquest.example",
+    "apk_ipa_built": false
+  },
+  "photo_decoder": {
+    "sharp": "0.35.4",
+    "libvips": "8.18.6",
+    "production_install_without_scripts": "passed on Linux x64 glibc; Docker/musl untested"
+  },
+  "mountain_routes_field_verified": false,
+  "live_ai_tested": false,
+  "payment_processor_connected": false,
+  "cluster_deployed": false,
+  "git_push": false
+}

@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cityquest
+  namespace: cityquest
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cityquest-config
+  namespace: cityquest
+data:
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: '3000'
+  PUBLIC_ORIGIN: https://quest.example.com
+  COOKIE_SECURE: 'true'
+  REQUIRE_ADMIN_MFA: 'true'
+  SESSION_IDLE_MINUTES: '30'
+  # Use cidr only after setting the actual ingress pod CIDRs. Never trust all addresses.
+  TRUST_PROXY: none
+  TRUST_PROXY_CIDRS: ''
+  JSON_LOGS: 'true'
+  PGSSLMODE: verify-full
+  PGSSLROOTCERT: /run/secrets/postgres/ca.crt
+  PG_POOL_MAX: '10'
+  MAP_STYLE: https://tiles.openfreemap.org/styles/dark
+  # Native origins must match the built mobile app; see docs/MOBILE.md.
+  MOBILE_ORIGINS: capacitor://localhost,https://localhost
+
+  # v0.4 pilot: enable manual web invoices only after operator reconciliation is configured.
+  BILLING_MANUAL_ENABLED: 'false'
+  BILLING_PLUS_KZT: '1490'
+  BILLING_BUSINESS_START_KZT: '14990'
+  BILLING_BUSINESS_PRO_KZT: '49990'
+  # A real provider is enabled only when this model AND runtime secret OPENAI_API_KEY are set.
+  OPENAI_PET_MODEL: ''
+  PET_AI_GLOBAL_DAILY_LIMIT: '1000'
+  PET_AI_TIMEOUT_MS: '20000'
+
+  # v0.5 bounded shared-SQL photograph storage; base64/WAL/backups need extra capacity.
+  PHOTO_STORAGE_LIMIT_MB: '100'
+  PHOTO_DAILY_UPLOAD_LIMIT: '5'
+  PHOTO_RETAINED_LIMIT: '20'
+
+  # v0.6 operator contacts, capacity and shared gameplay policy. Fill contacts before public launch.
+  SUPPORT_EMAIL: ''
+  PRIVACY_URL: ''
+  TERMS_URL: ''
+  BILLING_CONTACT_EMAIL: ''
+  MAP_RESOURCE_ORIGINS: ''
+  HTTP_MAX_INFLIGHT: '128'
+  HTTP_UPLOAD_CONCURRENCY: '2'
+  HTTP_BODY_TIMEOUT_MS: '15000'
+  HTTP_RESPONSE_TIMEOUT_MS: '45000'
+  HTTP_JSON_LIMIT_KB: '64'
+  PASSWORD_KDF_CONCURRENCY: '2'
+  RATE_LIMIT_MAX_KEYS: '10000'
+  GAME_GPS_MAX_AGE_SECONDS: '90'
+  GAME_GPS_MAX_ACCURACY_METERS: '80'
+  TERRITORY_DAILY_VISIT_LIMIT: '10'
+  ADVENTURE_PET_XP: '20'
+  PHOTO_DISCOVERY_XP: '20'
+  PHOTO_PET_XP: '10'
+  PHOTO_VOTER_MIN_AGE_HOURS: '24'
+  PG_POOL_QUEUE_LIMIT: '20'
+  PG_CONNECTION_TIMEOUT_MS: '5000'
+  PG_STATEMENT_TIMEOUT_MS: '15000'
+  PG_LOCK_TIMEOUT_MS: '5000'
+  PG_IDLE_TRANSACTION_TIMEOUT_MS: '30000'

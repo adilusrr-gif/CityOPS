@@ -1,0 +1,71 @@
+{
+  "errors": [],
+  "checks": [
+    "Almaty real map / Three.js ready",
+    "Guest switches to Astana: 12 quests, city bounds, fog, Three layer",
+    "3D and fog toggles",
+    "Astana player registers, GPS unlocks and museum quest awards 110 XP",
+    "City switch stops GPS, clears coordinates, isolates progress, preserves global XP",
+    "Team is city scoped and foreign-city team offers a switch",
+    "Profile MFA password setup, TOTP enable, recovery codes once, no local storage secrets",
+    "MFA recovery login and session revocation from profile",
+    "Admin publishes Astana token quest with budget and city coordinates",
+    "Admin edit sends optimistic version, token issued and secret cleared",
+    "Player redeems one-time token with fresh Astana GPS; issuer sees redemption",
+    "Mobile 390px and 320px have visible selector and no page overflow",
+    "Mobile business creates Astana organization and moderated quest, other city empty"
+  ],
+  "maps": [
+    {
+      "city": "astana",
+      "center": [
+        71.4304,
+        51.1282
+      ],
+      "bounds": [
+        [
+          71.2,
+          50.95
+        ],
+        [
+          71.75,
+          51.35
+        ]
+      ],
+      "fog": [
+        [
+          71.2,
+          50.95
+        ],
+        [
+          71.75,
+          50.95
+        ],
+        [
+          71.75,
+          51.35
+        ],
+        [
+          71.2,
+          51.35
+        ],
+        [
+          71.2,
+          50.95
+        ]
+      ],
+      "three": true
+    }
+  ],
+  "screenshots": [
+    "desktop-astana.png",
+    "profile-security.png",
+    "admin-astana.png",
+    "mobile-390.png",
+    "mobile-320.png",
+    "business-astana.png",
+    "business-320.png"
+  ],
+  "expectedErrors": [],
+  "assetRequests": 46
+}

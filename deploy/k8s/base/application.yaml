@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cityquest
+  namespace: cityquest
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  minReadySeconds: 10
+  progressDeadlineSeconds: 300
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Required host anti-affinity occupies all three minimum worker nodes.
+      # Release one old slot before replacement; two replicas remain available.
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cityquest
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cityquest
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: cityquest
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # A three-node minimum is intentional. A single worker cannot satisfy this policy.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: cityquest
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          minDomains: 3
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: cityquest
+      containers:
+        - name: app
+          image: cityquest:0.8.0
+          imagePullPolicy: IfNotPresent
+          command: [node, src/entry.mjs]
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: cityquest-config
+            - secretRef:
+                name: cityquest-runtime
+          # Runtime secret has the app SQL role only. Owner/admin bootstrap credentials stay in Jobs.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: '2'
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /api/ready
+              port: http
+            failureThreshold: 30
+            periodSeconds: 3
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # Let the Service endpoint removal propagate before SIGTERM starts draining requests.
+          lifecycle:
+            preStop:
+              exec:
+                command: [node, -e, 'setTimeout(() => {}, 5000)']
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: postgres-ca
+              mountPath: /run/secrets/postgres
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        - name: postgres-ca
+          secret:
+            secretName: cityquest-pg-ca
+            defaultMode: 0444
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cityquest
+  namespace: cityquest
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cityquest

@@ -1,0 +1,87 @@
+{
+  "version": "0.6.0",
+  "status": "passed",
+  "testedAt": "2026-09-23T20:36:05.798Z",
+  "browser": "Chromium 134 / Playwright 1.51.1",
+  "database": "Real SQLite HTTP server; isolated synthetic QA fixtures",
+  "map": "Real MapLibre/Three.js and actual OpenFreeMap resources via cached responses; no fake map",
+  "viewports": [
+    1440,
+    390,
+    320
+  ],
+  "passed": 27,
+  "suites": [
+    {
+      "name": "Adventures, photos and admin regression",
+      "passed": 13,
+      "checks": [
+        "Public mountain pilot is visibly draft with source elevations and no checkin action",
+        "Ordered urban checkpoints persist and reward only completion",
+        "Team territory visit changes leaderboard and prevents second daily click",
+        "Admin can publish reviewed mountain points and close them via real forms",
+        "Admin creates published contest with explicit device-local dates",
+        "Real file upload resizes camera image, obtains consent and displays private pending JPEG",
+        "Admin approves private image, public gallery displays stripped JPEG and author gains XP",
+        "Eligible viewer votes once; competition exposes rank and own vote",
+        "Report reaches moderator with exact photo lookup and resolution",
+        "Owner withdraws image and file becomes inaccessible",
+        "Astana switch uses separate city data and mutation query",
+        "Astana admin can update routes and create active zones without cross-city errors",
+        "390/320px adventures and eight-item admin navigation have no page overflow"
+      ],
+      "errors": []
+    },
+    {
+      "name": "Large data, navigation races and pagination",
+      "passed": 12,
+      "checks": [
+        "Large quest catalog pages explicitly and server search finds entries beyond first page",
+        "Progress totals stay accurate while only one bounded page of fog cells is loaded",
+        "Organization catalog uses stable cursor pages and previous page restores the first record",
+        "A delayed catalog response cannot overwrite a newer navigation",
+        "Photo form displays configured quotas and GPS rules; requesting GPS preserves its draft",
+        "Admin independently pages organizations, quests and users with totals and targeted search",
+        "Delayed privileged read cannot replace a later public page",
+        "Audit integrity runs only on explicit admin action and displays verified snapshot count",
+        "Token redemption history pages 50 records without truncating later records",
+        "Map viewport caps city organizations and reports that zoom reveals more places",
+        "Team-only map updates do not rebuild quest, organization, fog or 3D sources",
+        "320px large catalog and management remain within viewport"
+      ],
+      "errors": []
+    },
+    {
+      "name": "Private photo lifetime and cancellation",
+      "passed": 2,
+      "checks": [
+        "Private photo loader fetches visible images lazily and keeps its page concurrency bounded",
+        "Leaving the gallery aborts an in-flight private image and releases every object URL"
+      ],
+      "errors": []
+    }
+  ],
+  "fixtureSizes": {
+    "extraOrganizations": 2250,
+    "extraQuests": 220,
+    "extraUsers": 120,
+    "exploredCells": 1200,
+    "tokens": 120,
+    "photos": 12
+  },
+  "limits": [
+    "Native operating system builds and real geolocation were not exercised; fixtures use server API locations.",
+    "External map resources use a real previously fetched tile cache because direct browser egress is restricted."
+  ],
+  "screenshots": [
+    "admin-320.png",
+    "admin-390.png",
+    "bounded-map-390.png",
+    "contest-320.png",
+    "large-admin-390.png",
+    "mountains-390.png",
+    "photo-gallery-390.png",
+    "photo-pending-390.png",
+    "territories-390.png"
+  ]
+}

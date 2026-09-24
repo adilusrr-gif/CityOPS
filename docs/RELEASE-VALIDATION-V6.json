@@ -1,0 +1,67 @@
+{
+  "version": "0.6.0",
+  "tested_at": "2026-09-23",
+  "node": "24.19.0",
+  "tests": {
+    "sqlite_shared": {
+      "pass": 183,
+      "fail": 0
+    },
+    "postgresql": {
+      "pass": 110,
+      "fail": 0,
+      "skip": 2,
+      "engine": "PGlite WASM, serialized transactions; pg.Pool exercised through PGlite TCP socket",
+      "native_required_skips": [
+        "SKIP LOCKED concurrent workers",
+        "audit repeatable-read snapshot with concurrent writer"
+      ]
+    },
+    "deployment": {
+      "pass": 4,
+      "fail": 0
+    },
+    "total_pass": 297
+  },
+  "browser": {
+    "features": 27,
+    "pwa_and_bundle": 6,
+    "javascript_errors": 0,
+    "viewports": [
+      1440,
+      390,
+      320
+    ]
+  },
+  "schema": {
+    "sqlite": 5,
+    "postgresql": 6
+  },
+  "native_build": {
+    "version": "0.6.0",
+    "build": 6,
+    "api_origin": "https://cityquest.example",
+    "shared_bundle_and_sync": "passed",
+    "apk_ipa_built": false
+  },
+  "production_dependency_audit": {
+    "command": "npm audit --omit=dev --ignore-scripts --package-lock-only --json",
+    "known_vulnerabilities": 0
+  },
+  "benchmarks": {
+    "auth_report": "v6-auth-load.json",
+    "query_report": "QUERY-BENCHMARK.json",
+    "scope": "Local responsiveness and bounded-overload regression; SQL warm-cache microbenchmarks. Not production capacity or HA evidence."
+  },
+  "release_gate": {
+    "config_readonly_checks": "implemented; seven tests included in unit total",
+    "production_ready": false
+  },
+  "mountain_routes_field_verified": false,
+  "live_ai_tested": false,
+  "payment_processor_connected": false,
+  "cluster_deployed": false,
+  "native_postgres_tested": false,
+  "ci_run_here": false,
+  "git_push": false
+}

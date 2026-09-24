@@ -1,0 +1,14 @@
+{
+  "engine": "Playwright Chromium headless shell",
+  "api": "Deterministic fixture server; actual public JS, DOM and MapLibre/Three assets",
+  "checks": [
+    "Late MFA recovery response after logout does not reopen secret dialog",
+    "Delayed OSM file is not uploaded after city switch",
+    "Closing photo form during bitmap decoding prevents upload",
+    "Shared team marker expires without waiting for the next 8-second poll",
+    "Promotion pagination reaches older records, restores failed page and retries",
+    "390px commerce page has no horizontal overflow",
+    "No unhandled browser errors in targeted scenarios"
+  ],
+  "errors": []
+}

@@ -1,0 +1,38 @@
+# Isolated recovery, never applied by the normal release. Pick a verified time BEFORE the incident.
+# The restored cluster starts without WAL archiving; configure a NEW backup prefix before promoting to production.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cityquest-pg-restored
+  namespace: cityquest
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-standard-trixie@sha256:09892aaed3919234cf5d6e86abea13870f82d39b84826e9f0926d859a8fba3dc
+  enableSuperuserAccess: false
+  storage: {size: 50Gi, storageClass: encrypted-rwo}
+  walStorage: {size: 20Gi, storageClass: encrypted-rwo}
+  resources:
+    requests: {cpu: '1', memory: 2Gi}
+    limits: {cpu: '2', memory: 2Gi}
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: topology.kubernetes.io/zone
+  postgresql:
+    synchronous: {method: any, number: 1, dataDurability: required, failoverQuorum: true}
+    pg_hba:
+      - hostnossl all all all reject
+      - hostssl cityquest cityquest_owner all scram-sha-256
+      - hostssl cityquest cityquest_app all scram-sha-256
+  bootstrap:
+    recovery:
+      source: original
+      recoveryTarget:
+        targetTime: '2026-09-23 12:00:00+00'
+  externalClusters:
+    - name: original
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: cityquest-backups
+          serverName: cityquest-pg

@@ -1,0 +1,39 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: cityquest-backups
+  namespace: cityquest
+spec:
+  retentionPolicy: 30d
+  configuration:
+    # Private bucket/prefix in a separate failure domain. Change both placeholders.
+    destinationPath: s3://YOUR-BACKUP-BUCKET/cityquest/prod
+    endpointURL: https://s3.YOUR-REGION.amazonaws.com
+    s3Credentials:
+      accessKeyId: {name: cityquest-backup-s3, key: ACCESS_KEY_ID}
+      secretAccessKey: {name: cityquest-backup-s3, key: ACCESS_SECRET_KEY}
+    wal:
+      compression: gzip
+      maxParallel: 4
+    data:
+      compression: gzip
+      jobs: 2
+  instanceSidecarConfiguration:
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: '1', memory: 512Mi}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: cityquest-daily
+  namespace: cityquest
+spec:
+  schedule: '0 0 2 * * *'
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: cityquest-pg
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

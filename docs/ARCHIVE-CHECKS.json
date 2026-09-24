@@ -1,0 +1,39 @@
+{
+  "version": "0.8.0",
+  "schema": {
+    "sqlite": 5,
+    "postgresql": 6
+  },
+  "immutable_migration_files": [
+    {
+      "path": "src/migrations.mjs",
+      "sha256": "131e9f62c607be836e52b3bece49f4965ef311d9493031806ff4d7d8eba3434a"
+    },
+    {
+      "path": "src/enterprise/sql/003-enterprise.sql",
+      "sha256": "6b5080df02ea40b94255a773224ca8c4a89d977027ce2ca065c55fce4cc2db77"
+    },
+    {
+      "path": "src/enterprise/sql/004-pet-billing.sql",
+      "sha256": "4bba438f25afc21d9b155213e66204318414f48120cd401e6bff2d0eee2fa2ac"
+    },
+    {
+      "path": "src/enterprise/sql/005-adventures.sql",
+      "sha256": "43c7bf1d522dd14cc4ed8fc99a10690d02a139449e997e586d63e77142dfb74e"
+    },
+    {
+      "path": "src/enterprise/sql/006-query-indexes.sql",
+      "sha256": "0e0cc3f31111e9ff09ebdeb800e6e73ac665eb107ea1b98249df45b360e1ec55"
+    }
+  ],
+  "native_shared_files": 18,
+  "native_targets": [
+    "Android",
+    "iOS"
+  ],
+  "native_bytes_match": true,
+  "mobile_bundle_sha256": "0e18d1b81d6cac8a6cf1866a98f7e4d366c6311ce86612f4003117f12bb73dda",
+  "packages_and_locks_match": true,
+  "pwa_cache": "cityquest-shell-0.8.0-1",
+  "api_origin": "https://cityquest.example"
+}

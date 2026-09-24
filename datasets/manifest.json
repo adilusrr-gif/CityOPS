@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "copyrightUrl": "https://www.openstreetmap.org/copyright",
+  "sourceEndpoint": "https://overpass-api.de/api/interpreter",
+  "coverageWarning": "Operational rectangles, not administrative city boundaries. OpenStreetMap coverage is incomplete; entries are places, not verified operating businesses.",
+  "retainedTags": [
+    "name",
+    "name:ru",
+    "name:kk",
+    "amenity",
+    "shop",
+    "tourism",
+    "office",
+    "craft",
+    "leisure",
+    "addr:street",
+    "addr:housenumber"
+  ],
+  "cities": {
+    "almaty": {
+      "file": "datasets/almaty-osm.json",
+      "cityName": "Алматы",
+      "bounds": {
+        "west": 76.7,
+        "south": 43.02,
+        "east": 77.2,
+        "north": 43.45
+      },
+      "query": "[out:json][timeout:90];nwr[\"name\"][~\"^(amenity|shop|tourism|office|craft|leisure)$\"~\".\"](43.02,76.7,43.45,77.2);out center tags;",
+      "sourceTimestamp": "2026-09-22T08:45:51Z",
+      "generator": "Overpass API 0.7.62.11 87bfad18",
+      "rawElements": 8346,
+      "acceptedElements": 8344,
+      "skippedElements": 2,
+      "bytes": 1267784,
+      "sha256": "2dc3740523675fd922f25c2a1a770dd10d5d706258dd13b4a8f3bd2c4dc8e3e4",
+      "editorialQuests": 12
+    },
+    "astana": {
+      "file": "datasets/astana-osm.json",
+      "cityName": "Астана",
+      "bounds": {
+        "west": 71.2,
+        "south": 50.95,
+        "east": 71.75,
+        "north": 51.35
+      },
+      "query": "[out:json][timeout:90];nwr[\"name\"][~\"^(amenity|shop|tourism|office|craft|leisure)$\"~\".\"](50.95,71.2,51.35,71.75);out center tags;",
+      "sourceTimestamp": "2026-09-23T18:17:56Z",
+      "generator": "Overpass API 0.7.62.11 87bfad18",
+      "rawElements": 4782,
+      "acceptedElements": 4782,
+      "skippedElements": 0,
+      "bytes": 731739,
+      "sha256": "8cb73e0612fc0309cacf6c2f2693334494719c473bc6fd344809642822c25ad0",
+      "editorialQuests": 12
+    }
+  }
+}

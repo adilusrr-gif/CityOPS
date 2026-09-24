@@ -1,0 +1,54 @@
+{
+  "checks": [
+    "Pet adoption and real persisted profile",
+    "Care XP, daily disabled controls and progressbar",
+    "Offline exercise, safe escaped user content and retained history",
+    "Pet 390px and 320px layout including seven-nav admin size",
+    "Delete conversation keeps growth and removes stored messages",
+    "Player plans invoice uses real pending order with no fake paid state",
+    "Admin records unique external payment and Plus entitlement works",
+    "Business creates organization then acquires pilot business plan",
+    "Business promotion pending, admin moderation and ad disclosure in public catalog",
+    "External refund revokes entitlement and public promotion",
+    "History clear and navigation generation discard late chat responses",
+    "Native bridge hides web invoices even if catalog erroneously allows them",
+    "Configured AI consent, escaped reply, authoritative quota and free exercises",
+    "Urgent support reply visible after authoritative refresh; crisis input not retained or charged",
+    "Uncertain AI failure retains request ID and retry does not consume a second reservation",
+    "Explicit new AI request uses new ID with visible quota notice"
+  ],
+  "errors": [],
+  "screenshots": [
+    "pet-desktop.png",
+    "pet-390.png",
+    "pet-320.png",
+    "plans-320.png",
+    "business-promotion-390.png",
+    "admin-payments-320.png",
+    "pet-ai-consent-390.png"
+  ],
+  "realMapAssets": true,
+  "version": "0.4.0",
+  "testedAt": "2026-09-23T19:29:15.511Z",
+  "database": "SQLite in-memory with real HTTP server",
+  "browser": "Chromium 134 / Playwright 1.51.1",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 980
+    },
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 320,
+      "height": 844
+    }
+  ],
+  "nativeScope": "Capacitor bridge browser simulation; no APK/IPA device execution",
+  "providerScope": "Offline real server and mocked OpenAI HTTP adapter; no live provider key",
+  "status": "passed",
+  "passed": 16,
+  "additionalScope": "Focused browser safety regressions; mocked map and provider; real SQLite routes"
+}

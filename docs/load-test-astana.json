@@ -1,0 +1,108 @@
+{
+  "format": "cityquest-load-report-v1",
+  "startedAt": "2026-09-23T18:28:34.265Z",
+  "target": "http://127.0.0.1:42119",
+  "city": "astana",
+  "concurrency": 8,
+  "requestedDurationSeconds": 15,
+  "elapsedSeconds": 14.989,
+  "requestedRps": 40,
+  "fixture": {
+    "organizations": 13128,
+    "quests": 24,
+    "sameProcess": true
+  },
+  "runtime": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "arch": "x64",
+    "logicalCpus": 9
+  },
+  "requests": 600,
+  "successes": 600,
+  "errors": 0,
+  "statuses": {
+    "200": 600
+  },
+  "networkErrors": 0,
+  "invalidResponses": 0,
+  "bytes": 35178000,
+  "requestsPerSecond": 40.03,
+  "errorRate": 0,
+  "latency": {
+    "samples": 600,
+    "minMs": 0.66,
+    "p50Ms": 3.01,
+    "p95Ms": 15.78,
+    "p99Ms": 25.52,
+    "maxMs": 78.49,
+    "meanMs": 5.95
+  },
+  "endpoints": {
+    "/api/health": {
+      "requests": 150,
+      "errors": 0,
+      "statuses": {
+        "200": 150
+      },
+      "latency": {
+        "samples": 150,
+        "minMs": 0.66,
+        "p50Ms": 2.14,
+        "p95Ms": 2.81,
+        "p99Ms": 33.77,
+        "maxMs": 44.07,
+        "meanMs": 2.72
+      }
+    },
+    "/api/config": {
+      "requests": 150,
+      "errors": 0,
+      "statuses": {
+        "200": 150
+      },
+      "latency": {
+        "samples": 150,
+        "minMs": 1.61,
+        "p50Ms": 3.08,
+        "p95Ms": 4.06,
+        "p99Ms": 25.67,
+        "maxMs": 78.49,
+        "meanMs": 3.93
+      }
+    },
+    "/api/quests": {
+      "requests": 150,
+      "errors": 0,
+      "statuses": {
+        "200": 150
+      },
+      "latency": {
+        "samples": 150,
+        "minMs": 1.44,
+        "p50Ms": 2.91,
+        "p95Ms": 4.29,
+        "p99Ms": 17.58,
+        "maxMs": 48.13,
+        "meanMs": 3.44
+      }
+    },
+    "/api/organizations": {
+      "requests": 150,
+      "errors": 0,
+      "statuses": {
+        "200": 150
+      },
+      "latency": {
+        "samples": 150,
+        "minMs": 10.13,
+        "p50Ms": 12.83,
+        "p95Ms": 18.85,
+        "p99Ms": 23.02,
+        "maxMs": 51.75,
+        "meanMs": 13.7
+      }
+    }
+  },
+  "scope": "Anonymous GET requests only; no map tiles, browser rendering, writes, login, multiplayer, durability or capacity/SLA claims. Latency includes errors and full response body; fixed concurrency may limit requested RPS. Ephemeral mode shares the load generator process with the application."
+}

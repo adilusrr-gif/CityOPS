@@ -1,0 +1,18 @@
+{
+  "build": {
+    "version": "0.8.0",
+    "apiOrigin": "https://cityquest.example",
+    "bundledAssets": true
+  },
+  "checks": [
+    "Installed PWA shell version 0.8.0 includes new team-presence module",
+    "PWA cache contains no API, auth, coordinates or private media",
+    "PWA offline reload retains shell and reports unavailable server",
+    "PWA reconnect restores authenticated application navigation",
+    "Compiled 0.8.0 native bundle runs with simulated native bridge, Astana and pet view at 320px",
+    "Compiled native requests use memory-only bearer and clear it at logout"
+  ],
+  "errors": [],
+  "native": "Chromium with Capacitor custom platform and web plugin implementations; no physical device, APK, IPA or real OS bridge tested",
+  "backend": "Deterministic API fixtures"
+}

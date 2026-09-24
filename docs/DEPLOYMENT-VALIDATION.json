@@ -1,0 +1,175 @@
+{
+  "checked_at": "2026-09-23",
+  "scope": "Static deployment preparation; no cluster deployment",
+  "tools": {
+    "kubectl": "1.35.3",
+    "kustomize": "5.7.1",
+    "kubeconform": "0.8.0"
+  },
+  "rendered_kustomizations": [
+    "foundation",
+    "base",
+    "jobs",
+    "grants",
+    "bootstrap",
+    "cnpg",
+    "cnpg-restore",
+    "external-secrets",
+    "monitoring"
+  ],
+  "schema_validation": {
+    "kubernetes": "1.35.0",
+    "cnpg": "official 1.30.1 release CRDs",
+    "barman": "official 0.15.0 release CRDs",
+    "resources": 17,
+    "valid": 17,
+    "invalid": 0,
+    "errors": 0,
+    "skipped": 0,
+    "directories": [
+      "base",
+      "jobs",
+      "grants",
+      "bootstrap",
+      "cnpg",
+      "cnpg-restore"
+    ]
+  },
+  "optional_crds": "ExternalSecret and ServiceMonitor rendered; operator/provider admission not exercised",
+  "tests": {
+    "deployment_secret_tests": 4,
+    "passed": 4,
+    "node_and_shell_syntax": "passed",
+    "yaml_parsing": "passed",
+    "compose_credential_boundary_checks": "passed"
+  },
+  "images_verified": {
+    "ghcr.io/cloudnative-pg/postgresql:17.11-standard-trixie": "sha256:09892aaed3919234cf5d6e86abea13870f82d39b84826e9f0926d859a8fba3dc",
+    "postgres:17.11-alpine": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+    "caddy:2.10.2-alpine": "sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
+  },
+  "not_executed": [
+    "Docker build/Compose runtime",
+    "Kubernetes admission or scheduling",
+    "production TLS/DNS/IdP",
+    "CloudNativePG failover/zone loss",
+    "object storage backup/PITR",
+    "production load and RPO/RTO measurements"
+  ],
+  "ci_configured_not_run_here": [
+    "native PostgreSQL tests with PG_TEST_REQUIRED=true",
+    "shared mobile assets and Capacitor sync",
+    "Docker build",
+    "two-process Compose smoke stopping one app"
+  ],
+  "version": "0.8.0",
+  "v4_checks": {
+    "env_examples": 3,
+    "manual_billing_default": "disabled",
+    "ai_provider_default": "disabled",
+    "images_and_jobs": "v0.4.0 / v4",
+    "upgrade": "maintenance window, PostgreSQL schema 3 to 4"
+  },
+  "v5_checks": {
+    "rendered_kustomizations": 9,
+    "schema_resources_valid": 17,
+    "deployment_secret_tests_passed": 4,
+    "images_and_jobs": "v0.5.0 / v5",
+    "upgrade": "maintenance window, PostgreSQL schema 4 to 5, SQLite schema 3 to 4",
+    "photo_storage": "shared SQL database; bounded pilot; no object-store deployment",
+    "photo_env_defaults": {
+      "PHOTO_STORAGE_LIMIT_MB": 100,
+      "PHOTO_DAILY_UPLOAD_LIMIT": 5,
+      "PHOTO_RETAINED_LIMIT": 20
+    },
+    "photo_env_targets": [
+      "three env examples",
+      "Kubernetes ConfigMap",
+      "Compose runtime"
+    ]
+  },
+  "v6_checks": {
+    "rendered_kustomizations": 9,
+    "schema_resources_valid": 17,
+    "deployment_secret_tests_passed": 4,
+    "production_check_tests_passed": 7,
+    "images_and_jobs": "v0.6.0 / v6",
+    "upgrade": "maintenance window; PostgreSQL schema5 to6, SQLite4 to5; additive006-query-indexes.sql",
+    "production_gate": "read-only production configuration (including HTTP response timeout), optional DB snapshot and rendered-manifest placeholder/digest checks; success is not infrastructure certification",
+    "native_postgres_local_attempt": "unavailable; apt sandbox denied setgroups/seteuid; no bypass or server started",
+    "new_ci_gate": "native Sharp decode in production Docker image; configured, not executed here",
+    "release_check_env": "npm run release:check loads .env.enterprise if present; explicit node --env-file command selects other configurations",
+    "http_response_timeout": {
+      "env": "HTTP_RESPONSE_TIMEOUT_MS",
+      "default_ms": 45000,
+      "min_ms": 1000,
+      "max_ms": 120000,
+      "semantics": "response inactivity timeout; retained admission until handler and response finish"
+    }
+  },
+  "v7_checks": {
+    "checked_at": "2026-09-24",
+    "scope": "Targeted operational regression tests and static base manifest validation; no runtime cluster deployment",
+    "images_and_jobs": "v0.7.0 / v7",
+    "upgrade": "No schema change: PostgreSQL 6 and SQLite 5; compatible app rollout requires staging acceptance",
+    "fixes": [
+      {
+        "severity": "P1",
+        "area": "native PostgreSQL test fixture",
+        "fix": "Dedicated validated single-schema startup search_path; arbitrary startup options and timeout overrides remain forbidden",
+        "evidence": "Real node-postgres startup configuration test; native PostgreSQL CI not executed here"
+      },
+      {
+        "severity": "P1",
+        "area": "three-node rolling update",
+        "fix": "maxUnavailable=1 and maxSurge=0 with required hostname anti-affinity and availability floor 2",
+        "evidence": "Scheduling constraint regression and base manifest schema validation; no live scheduler exercised"
+      },
+      {
+        "severity": "P2",
+        "area": "SQLite backup/restore integrity",
+        "fix": "Foreign key validation supplements page integrity before creating or installing backup",
+        "evidence": "Reproduced dangling reference with integrity_check=ok; backup and checksummed legacy restore now reject it and clean temporary output"
+      }
+    ],
+    "targeted_tests": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "new_regressions": 4,
+      "scope": "backup/restore, pg pool/startup policy, deployment secret generator and rolling strategy; not additive to full-suite totals"
+    },
+    "base_schema_validation": {
+      "rendered_kustomizations": [
+        "base"
+      ],
+      "resources": 8,
+      "valid": 8,
+      "invalid": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "not_executed": [
+      "Native PostgreSQL server/fixture isolation",
+      "Docker/Compose runtime",
+      "Live Kubernetes rolling update or failover",
+      "Production backup/PITR"
+    ],
+    "historical_results": "Top-level 2026-09-23 and v4/v5/v6 result blocks are retained as historical evidence; they are not new v0.7 reruns"
+  },
+  "v8_checks": {
+    "checked_at": "2026-09-24",
+    "images_and_jobs": "v0.8.0 / v8",
+    "schema": "SQLite 5 / PostgreSQL 6; migration bytes unchanged from v0.7",
+    "deployment_secret_tests": {
+      "pass": 4,
+      "fail": 0
+    },
+    "encryption_gate": "Startup bounded sample and full read-only ciphertext preflight tested on SQLite and PostgreSQL/PGlite, including wrong key and malformed MFA",
+    "rate_admission": "SKIP LOCKED bounded cleanup SQL checked in PGlite; native concurrent refresh regression added and skipped locally",
+    "kubernetes_validation": "Image tags and Job names advanced; previous v7 Kustomize/kubeconform result is historical and was not rerun",
+    "cluster_deployed": false,
+    "native_postgres_tested": false,
+    "ci_run_here": false
+  }
+}

@@ -1,0 +1,40 @@
+# Linux production host; Caddy runs as a host service. Use compose.yaml for local development.
+# One application replica and local SQLite volume. This is not a highly available deployment.
+services:
+  app:
+    container_name: cityquest-app
+    build: .
+    image: cityquest:local
+    env_file: ${APP_ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      HOST: 127.0.0.1
+      PORT: '3000'
+      DATABASE_PATH: /app/data/almaty.sqlite
+      COOKIE_SECURE: 'true'
+      TRUST_PROXY: loopback
+    # Host Caddy connects through actual loopback, matching the proxy trust policy.
+    network_mode: host
+    user: '1000:1000'
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1770,uid=1000,gid=1000
+    volumes:
+      - cityquest-data:/app/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+    pids_limit: 128
+    mem_limit: 1g
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    deploy:
+      replicas: 1
+volumes:
+  cityquest-data:

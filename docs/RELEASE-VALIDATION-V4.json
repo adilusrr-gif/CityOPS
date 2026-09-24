@@ -1,0 +1,40 @@
+{
+  "version": "0.4.0",
+  "tested_at": "2026-09-23",
+  "node": "24.19.0",
+  "tests": {
+    "sqlite_shared": {
+      "pass": 111,
+      "fail": 0
+    },
+    "postgresql": {
+      "pass": 66,
+      "fail": 0,
+      "skip": 1,
+      "engine": "PGlite WASM, serialized transactions"
+    },
+    "deployment": {
+      "pass": 4,
+      "fail": 0
+    },
+    "total_pass": 181
+  },
+  "browser": {
+    "features": 16,
+    "pwa_and_bundle": 5
+  },
+  "schema": {
+    "sqlite": 3,
+    "postgresql": 4
+  },
+  "native_build": {
+    "version": "0.4.0",
+    "build": 4,
+    "api_origin": "https://cityquest.example",
+    "apk_ipa_built": false
+  },
+  "live_ai_tested": false,
+  "payment_processor_connected": false,
+  "cluster_deployed": false,
+  "git_push": false
+}

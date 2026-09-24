@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "PWA installs and controls page; cache contains shell only",
+    "Offline PWA renders shell and connection error, no cached quests/user/reward",
+    "PWA retry reconnects without reloading or fabricating progress",
+    "Compiled Capacitor bundle executes in Chromium web fallback, Astana switch at 320px"
+  ],
+  "errors": [],
+  "cache": {
+    "names": [
+      "cityquest-shell-0.3.0-1"
+    ],
+    "paths": [
+      "/",
+      "/index.html",
+      "/app.js",
+      "/map.js",
+      "/platform.js",
+      "/styles.css",
+      "/icon.svg",
+      "/manifest.webmanifest",
+      "/icons/icon-192.png",
+      "/icons/icon-512.png",
+      "/icons/maskable-512.png",
+      "/vendor/maplibre-gl.js",
+      "/vendor/maplibre-gl.css",
+      "/vendor/three.module.js",
+      "/vendor/three.core.js"
+    ]
+  }
+}

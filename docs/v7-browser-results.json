@@ -1,0 +1,60 @@
+{
+  "version": "0.7.0",
+  "testedAt": "2026-09-24T02:26:37.001Z",
+  "status": "passed",
+  "passed": 11,
+  "browser": "Chromium Headless Shell 134 / Playwright 1.51.1",
+  "suites": [
+    {
+      "source": "ui-races-report.json",
+      "testedAt": "2026-09-24T02:22:44.799Z",
+      "browser": "Chromium 134 / Playwright 1.51.1",
+      "scope": "Actual SQLite HTTP server and shared web UI. Empty map-style fixture isolates UI races; does not validate real map tiles or native devices.",
+      "checks": [
+        "Shared UI starts, renders bounded quests and initializes map without AbortSignal static methods",
+        "Late next-page response cannot append the previous query into newer quest search",
+        "Late polling response cannot overwrite search performed while polling was in flight",
+        "Failed location cleanup still revokes the session and failed subsequent refresh leaves no private UI"
+      ],
+      "errors": [],
+      "status": "passed",
+      "passed": 4
+    },
+    {
+      "source": "billing-ui-report.json",
+      "testedAt": "2026-09-24T02:26:22.739Z",
+      "browser": "Chromium 134 / Playwright 1.51.1",
+      "scope": "Actual SQLite API with admin MFA, 237 synthetic billing orders and mobile web UI. Minimal map-style fixture.",
+      "checks": [
+        "Admin reaches all 237 billing orders through bounded pages, including oldest pending payment",
+        "Delayed privileged billing page cannot replace a later profile screen",
+        "Reopening billing resets pagination and payment controls fit a 320px viewport"
+      ],
+      "errors": [],
+      "status": "passed",
+      "passed": 3
+    },
+    {
+      "source": "pwa-upgrade-report.json",
+      "testedAt": "2026-09-24T02:24:00.027Z",
+      "browser": "Chromium 134 / Playwright 1.51.1",
+      "scope": "Real service-worker lifecycle using archived v0.6 worker and current v0.7 worker. Minimal version-labelled HTTP shell fixture, not a full native-device test.",
+      "checks": [
+        "Archived v0.6 worker installs and controls its original shell",
+        "Existing v0.6 installation upgrades on closing all controlled tabs and reopening",
+        "Active v0.7 worker keeps HTML and modules from its own release while newer worker waits",
+        "Next launch activates new shell atomically and removes obsolete shell caches"
+      ],
+      "errors": [],
+      "status": "passed",
+      "passed": 4
+    }
+  ],
+  "limitations": [
+    "These are 11 new v0.7 scenarios; historical v0.6 checks were not counted as current passes.",
+    "Map resources use an empty style fixture to isolate UI races; no current real-tile availability claim.",
+    "Service-worker lifecycle uses real archived v0.6 and current v0.7 workers with a minimal version-labelled HTTP shell.",
+    "A previously installed v0.6 worker still has its original network-first HTML behavior until activation of v0.7. Close all controlled tabs/windows and relaunch to upgrade. The stronger same-release reload guarantee applies after v0.7 activation.",
+    "Native-device testing, external IdP and Android/iOS signing remain separate release gates."
+  ]
+}

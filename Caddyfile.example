@@ -1,0 +1,16 @@
+# Install Caddy as a service on the same Linux host as compose.production.yaml.
+# Replace domain, point A/AAAA records here, allow 80/443. Caddy manages HTTPS.
+# Application: PUBLIC_ORIGIN=https://quest.example.com, COOKIE_SECURE=true,
+# TRUST_PROXY=loopback. Application listens only at 127.0.0.1:3000.
+# The host and every local process are in the trusted proxy security boundary.
+quest.example.com {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+    request_body {
+        max_size 10MB
+    }
+    reverse_proxy 127.0.0.1:3000
+    encode zstd gzip
+}

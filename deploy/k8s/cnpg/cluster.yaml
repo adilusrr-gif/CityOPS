@@ -1,0 +1,102 @@
+# Requires CloudNativePG 1.30.1 and Barman Cloud plugin 0.15.0; see docs/PRODUCTION-HA.md.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cityquest-pg
+  namespace: cityquest
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-standard-trixie@sha256:09892aaed3919234cf5d6e86abea13870f82d39b84826e9f0926d859a8fba3dc
+  enableSuperuserAccess: false
+  primaryUpdateStrategy: supervised
+  failoverDelay: 10
+  storage:
+    size: 50Gi
+    # Set the encrypted, expandable, multi-zone CSI StorageClass available in your cluster.
+    storageClass: encrypted-rwo
+  walStorage:
+    size: 20Gi
+    storageClass: encrypted-rwo
+  resources:
+    requests: {cpu: '1', memory: 2Gi}
+    limits: {cpu: '2', memory: 2Gi}
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: topology.kubernetes.io/zone
+  postgresql:
+    parameters:
+      max_connections: '150'
+      shared_buffers: 512MB
+      archive_timeout: 60s
+      password_encryption: scram-sha-256
+      # Do not relax during an outage without an explicit data-loss decision.
+      synchronous_commit: 'on'
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: required
+      failoverQuorum: true
+    pg_hba:
+      - hostnossl all all all reject
+      - hostssl cityquest cityquest_owner all scram-sha-256
+      - hostssl cityquest cityquest_app all scram-sha-256
+  bootstrap:
+    initdb:
+      database: cityquest
+      owner: cityquest_owner
+      secret:
+        name: cityquest-pg-owner
+  managed:
+    roles:
+      - name: cityquest_app
+        ensure: present
+        login: true
+        superuser: false
+        createdb: false
+        createrole: false
+        inherit: false
+        replication: false
+        bypassrls: false
+        connectionLimit: 100
+        passwordSecret:
+          name: cityquest-pg-app
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: cityquest-backups
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cityquest-postgres-ingress
+  namespace: cityquest
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: cityquest-pg
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: cityquest}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: cityquest-maintenance}
+        - podSelector:
+            matchLabels: {cnpg.io/cluster: cityquest-pg}
+      ports:
+        - {protocol: TCP, port: 5432}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: cnpg-system}
+        - podSelector:
+            matchLabels: {cnpg.io/cluster: cityquest-pg}
+      ports:
+        - {protocol: TCP, port: 8000}
+        - {protocol: TCP, port: 5432}
+    - from:
+        - namespaceSelector:
+            matchLabels: {cityquest-monitoring: 'true'}
+      ports:
+        - {protocol: TCP, port: 9187}

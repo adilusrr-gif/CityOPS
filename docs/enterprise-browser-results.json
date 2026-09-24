@@ -1,0 +1,48 @@
+{
+  "tested_at": "2026-09-23T19:04:52.368Z",
+  "version": "0.3.0",
+  "database_engine": "pglite-wasm-serialized",
+  "scope": "Real Chromium UI against enterprise asynchronous PostgreSQL routes; PGlite does not establish native PostgreSQL concurrency or cluster failover.",
+  "checks": [
+    {
+      "name": "Almaty: 8,346 organization cards and 12 starter quests through PostgreSQL API",
+      "status": "passed"
+    },
+    {
+      "name": "Astana: city switch, real map/Three.js, 4,782 cards and 12 starter quests",
+      "status": "passed"
+    },
+    {
+      "name": "Mobile business registration and Astana organization submission",
+      "status": "passed"
+    },
+    {
+      "name": "Business submits check-in quest for moderation with same-city ownership",
+      "status": "passed"
+    },
+    {
+      "name": "Administrator finds and approves business organization in Astana",
+      "status": "passed"
+    },
+    {
+      "name": "Administrator publishes moderated business quest with optimistic version",
+      "status": "passed"
+    },
+    {
+      "name": "Player registers, updates browser GPS and completes published Astana quest for 170 XP",
+      "status": "passed"
+    },
+    {
+      "name": "City switch clears active position and preserves global XP with separate city progress",
+      "status": "passed"
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    "enterprise-business-390.png",
+    "enterprise-admin-astana.png",
+    "enterprise-player-astana.png"
+  ],
+  "asset_requests": 36,
+  "result": "passed"
+}
