@@ -22,3 +22,9 @@ body{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left)
 .map-data-status{position:absolute;top:116px;left:24px;max-width:calc(100% - 80px);font-size:10px;color:#efc275;background:#111b2cdd;border-radius:6px;padding:6px 9px;pointer-events:none}.map-data-status:empty{display:none}@media(max-width:760px){.map-data-status{top:148px;left:16px;max-width:calc(100% - 75px)}}
 
 @media(max-width:760px){.discovery .quest-list{max-height:60vh;overflow:auto;overscroll-behavior:contain;padding-bottom:4px}}
+
+/* Keep every navigation item reachable on narrow phones without widening the page. */
+.connection-status{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#29271f;color:var(--gold);padding:10px 16px;font-size:12px}
+@media(max-width:760px){.rail{justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;top:env(safe-area-inset-top,0px)}.nav{flex:1 0 48px}.connection-status .button{min-height:44px}}
+/* Use the dynamic viewport when supported; device keyboard behavior still needs native QA. */
+@supports(height:100dvh){dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}}

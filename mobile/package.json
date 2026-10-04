@@ -10,7 +10,9 @@
     "build": "node ../scripts/build-mobile.mjs",
     "sync": "npm run build && cap sync",
     "android": "cap open android",
-    "ios": "cap open ios"
+    "ios": "cap open ios",
+    "release:check": "node scripts/verify-release.mjs",
+    "release:prepare": "npm run sync && npm run release:check"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",

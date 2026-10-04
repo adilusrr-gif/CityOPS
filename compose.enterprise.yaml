@@ -137,6 +137,13 @@ services:
     volumes:
       - ./deploy/local/Caddyfile:/etc/caddy/Caddyfile:ro
     tmpfs: ['/data:uid=1000,gid=1000,mode=700', '/config:uid=1000,gid=1000,mode=700']
+    # A running proxy container is not yet proof that the HTTP listener works.
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:8080/api/ready || exit 1']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
     depends_on:
       app1: {condition: service_healthy}
       app2: {condition: service_healthy}

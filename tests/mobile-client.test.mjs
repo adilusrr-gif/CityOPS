@@ -127,3 +127,51 @@ test('viewport and private photo requests support cancellation without retries o
  const request=binary?api.photoBlob('/photos/a/image',{signal:controller.signal}):api.request('/organizations','GET',undefined,{signal:controller.signal});controller.abort();await assert.rejects(request,{name:'AbortError'});assert.equal(calls,1);
  }
 });
+
+test('native GPS denial, approximate-only permission and retry use actionable Russian errors',async()=>{
+ let requests=0,started=0,errors=[];globalThis.CityQuestNative={isNative:true,geolocation:{requestPermissions:async()=>++requests===1?{location:'denied',coarseLocation:'granted'}:{location:'granted'},watchPosition:async()=>{started++;return 'gps';},clearWatch:async()=>{}}};
+ try{
+  const first=watchLocation(assert.fail,error=>errors.push(error));await new Promise(resolve=>setImmediate(resolve));await first.stop();
+  assert.equal(started,0);assert.equal(errors[0].code,1);assert.match(errors[0].message,/точную геолокацию/);
+  const retry=watchLocation(assert.fail,assert.fail);await new Promise(resolve=>setImmediate(resolve));await retry.stop();assert.equal(started,1);
+ }finally{delete globalThis.CityQuestNative;}
+});
+
+test('native GPS service and timeout failures are localized consistently',async()=>{
+ const {locationError}=await import('../public/platform.js');
+ for(const [code,expected,message] of [['OS-PLUG-GLOC-0007',2,/выключена/],['OS-PLUG-GLOC-0008',1,/ограничен/],['OS-PLUG-GLOC-0010',3,/вовремя/],['OS-PLUG-GLOC-0017',2,/интернет/],[1,1,/Разрешите/],[3,3,/вовремя/]]){
+  const result=locationError({code,message:'English system detail'});assert.equal(result.code,expected);assert.match(result.message,message);assert(!result.message.includes('English'));
+ }
+});
+
+async function platformHarness(){
+ const listeners={},nativeListeners={},document={hidden:false,addEventListener:(name,fn)=>listeners[name]=fn,querySelector:()=>null};
+ const context=vm.createContext({document,window:{},navigator:{},URL,URLSearchParams,AbortController,DOMException,TextEncoder,Uint8Array,crypto:globalThis.crypto,btoa,setTimeout,clearTimeout,Date,CityQuestNative:{isNative:true,apiBase:'https://api.example.test',app:{addListener:async(name,fn)=>nativeListeners[name]=fn,getLaunchUrl:async()=>null},browser:{open:async()=>{},close:async()=>{}}}});
+ const source=(await readFile(new URL('../public/platform.js',import.meta.url),'utf8')).replace(/export /g,'');
+ vm.runInContext(source+'\nglobalThis.platform={initializePlatform,startSso,handleDeepLink,clearSession};',context);
+ return {context,document,listeners,nativeListeners,platform:context.platform};
+}
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+test('native and DOM lifecycle events deduplicate inactivity and await cleanup before resume',async()=>{
+ const h=await platformHarness(),calls=[];let finish;
+ await h.platform.initializePlatform({onInactive:()=>{calls.push('inactive');return new Promise(resolve=>finish=resolve);},onActive:()=>calls.push('active')});
+ h.document.hidden=true;h.listeners.visibilitychange();h.nativeListeners.appStateChange({isActive:false});assert.deepEqual(calls,['inactive']);
+ h.document.hidden=false;h.listeners.visibilitychange();h.nativeListeners.appStateChange({isActive:true});await flush();assert.deepEqual(calls,['inactive']);
+ finish();await flush();assert.deepEqual(calls,['inactive','active']);h.nativeListeners.appStateChange({isActive:true});assert.equal(calls.length,2);
+});
+test('a rapid return to background suppresses stale foreground work',async()=>{
+ const h=await platformHarness(),calls=[];let finish;
+ await h.platform.initializePlatform({onInactive:()=>{calls.push('inactive');return new Promise(resolve=>finish=resolve);},onActive:()=>calls.push('active')});
+ h.nativeListeners.appStateChange({isActive:false});const firstFinish=finish;
+ h.nativeListeners.appStateChange({isActive:true});h.nativeListeners.appStateChange({isActive:false});firstFinish();finish();await flush();assert.deepEqual(calls,['inactive','inactive']);
+});
+test('duplicate native SSO callbacks cannot interrupt or repeat an in-flight exchange',async()=>{
+ const h=await platformHarness(),callbacks=[];let resolveExchange,exchanges=0;
+ h.context.fetch=async()=>{exchanges++;return new Promise(resolve=>resolveExchange=()=>resolve({ok:true,json:async()=>({user:{id:'one'},accessToken:'memory-only'})}));};
+ await h.platform.initializePlatform({onAuth:(error,result)=>callbacks.push({error,result})});
+ try{
+  await h.platform.startSso();const url='cityquest://auth/callback?code='+'f'.repeat(64),first=h.platform.handleDeepLink(url);await flush();
+  await h.platform.handleDeepLink(url);assert.equal(exchanges,1);assert.equal(callbacks.length,0);
+  resolveExchange();await first;await h.platform.handleDeepLink(url);assert.equal(exchanges,1);assert.equal(callbacks.length,1);assert.equal(callbacks[0].error,null);
+ }finally{h.platform.clearSession();}
+});

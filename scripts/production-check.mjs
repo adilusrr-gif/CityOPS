@@ -82,30 +82,37 @@ export async function checkRenderedManifest(file) {
  return {images: images.length, errors};
 }
 
-async function inspectRows(db, dialect, env) {
+export async function inspectDatabaseSnapshot(db, dialect, env) {
  const get = dialect === 'sqlite' ? (sql, args = []) => db.prepare(sql).get(...args) : (sql, args = []) => db.get(sql, args);
  const schema = dialect === 'sqlite' ? (await get('PRAGMA user_version')).user_version : Number((await get('SELECT MAX(version) AS version FROM schema_migrations')).version);
  const expected = dialect === 'sqlite' ? SCHEMA_VERSION : PG_SCHEMA_VERSION;
  const result = {schema, expectedSchema: expected};
  if (schema !== expected) return result;
- const users = await get("SELECT SUM(CASE WHEN role='admin' AND disabled=0 THEN 1 ELSE 0 END) AS admins,SUM(CASE WHEN role='admin' AND disabled=0 AND mfa_enabled=1 THEN 1 ELSE 0 END) AS mfa_admins,SUM(CASE WHEN disabled=0 AND (lower(email) LIKE '%@example.com' OR lower(email) LIKE '%@example.org' OR lower(email) LIKE '%@example.net' OR lower(email) LIKE '%.example.com' OR lower(email) LIKE '%.example.org' OR lower(email) LIKE '%.example.net' OR lower(email) LIKE '%@localhost' OR lower(email) LIKE '%.localhost' OR lower(email) LIKE '%.example' OR lower(email) LIKE '%.test' OR lower(email) LIKE '%.invalid') THEN 1 ELSE 0 END) AS example_accounts FROM users");
+ // OIDC creates non-deliverable identifiers, never a verified user email. Do
+ // not mistake those identities for seeded/demo accounts; a narrow exception
+ // requires the generated address, disabled local login and a durable IdP link.
+ const generatedSso = dialect === 'postgres'
+  ? " AND NOT (u.password_login_enabled=0 AND u.email=('sso-' || u.id || '@identity.invalid') AND EXISTS(SELECT 1 FROM oidc_identities oi WHERE oi.user_id=u.id))"
+  : '';
+ const users = await get(`SELECT SUM(CASE WHEN role='admin' AND disabled=0 THEN 1 ELSE 0 END) AS admins,SUM(CASE WHEN role='admin' AND disabled=0 AND mfa_enabled=1 THEN 1 ELSE 0 END) AS mfa_admins,SUM(CASE WHEN disabled=0 AND (lower(email) LIKE '%@example.com' OR lower(email) LIKE '%@example.org' OR lower(email) LIKE '%@example.net' OR lower(email) LIKE '%.example.com' OR lower(email) LIKE '%.example.org' OR lower(email) LIKE '%.example.net' OR lower(email) LIKE '%@localhost' OR lower(email) LIKE '%.localhost' OR lower(email) LIKE '%.example' OR lower(email) LIKE '%.test' OR lower(email) LIKE '%.invalid')${generatedSso} THEN 1 ELSE 0 END) AS example_accounts FROM users u`);
  const media = await get('SELECT COALESCE(SUM(image_bytes),0) AS bytes,COUNT(*) AS photos FROM photos');
  const ledger = await get('SELECT used_bytes FROM photo_storage WHERE id=1');
  const content = await get("SELECT COUNT(*) AS editorial_quests FROM quests WHERE id LIKE 'quest-%'");
+ const unicodeSearch = dialect === 'postgres' ? (await get("SELECT 'ҚАЗАҚ ӘЛЕМІ · КОФЕЙНЯ' ILIKE 'қазақ әлемі · кофейня' AS ok")).ok === true : true;
  const encryption=await inspectEncryption(db,dialect,env.DATA_ENCRYPTION_KEY);
- return {...result, encryption, administrators: Number(users.admins || 0), mfaAdministrators: Number(users.mfa_admins || 0), exampleAccounts: Number(users.example_accounts || 0), photos: Number(media.photos), photoBytes: Number(media.bytes), photoLedgerBytes: Number(ledger?.used_bytes || 0), editorialQuests: Number(content.editorial_quests)};
+ return {...result, encryption, unicodeSearch, administrators: Number(users.admins || 0), mfaAdministrators: Number(users.mfa_admins || 0), exampleAccounts: Number(users.example_accounts || 0), photos: Number(media.photos), photoBytes: Number(media.bytes), photoLedgerBytes: Number(ledger?.used_bytes || 0), editorialQuests: Number(content.editorial_quests)};
 }
 
 export async function inspectDatabase(env = process.env) {
  if (env.DATABASE_URL) {
   const db = await openPostgres({env, max: 1, statement_timeout: 5000, lock_timeout: 2000});
-  try {return await db.transaction(async tx => {await tx.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY'); return inspectRows(tx, 'postgres',env);});}
+  try {return await db.transaction(async tx => {await tx.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY'); return inspectDatabaseSnapshot(tx, 'postgres',env);});}
   finally {await db.close();}
  }
  const {DatabaseSync} = await import('node:sqlite');
  // Never call openDb: it initializes, migrates and seeds. Missing files fail.
  const db = new DatabaseSync(resolve(env.DATABASE_PATH || './data/almaty.sqlite'), {readOnly: true});
- try {db.exec('PRAGMA busy_timeout=2000; BEGIN'); return await inspectRows(db, 'sqlite',env);}
+ try {db.exec('PRAGMA busy_timeout=2000; BEGIN'); return await inspectDatabaseSnapshot(db, 'sqlite',env);}
  finally {db.close();}
 }
 
@@ -129,6 +136,7 @@ export async function runCheck({env = process.env, database = false, manifests =
    else {
     if (!value.administrators || !value.mfaAdministrators) add(report, 'errors', 'administrator_mfa', 'At least one active administrator with configured MFA is required.');
     if (value.encryption.invalid) add(report, 'errors', 'database_encryption', 'Stored MFA or companion ciphertext cannot be authenticated with DATA_ENCRYPTION_KEY, or an enabled MFA account has no valid secret. Restore the original key or repair affected records before launch.');
+    if (!value.unicodeSearch) add(report, 'errors', 'database_locale', 'Database locale does not support Cyrillic and Kazakh case-insensitive search. Use a Unicode-aware locale and verify catalog searches before launch.');
     if (value.exampleAccounts) add(report, 'errors', 'example_accounts', 'Active accounts with reserved example/test email domains remain in the database.');
     if (value.photoBytes !== value.photoLedgerBytes) add(report, 'errors', 'photo_ledger', 'Photograph storage ledger differs from stored byte totals.');
     if (value.photoBytes > loadProductPolicy(env).photoStorageBytes) add(report, 'errors', 'photo_capacity', 'Stored photographs exceed the configured storage quota.');

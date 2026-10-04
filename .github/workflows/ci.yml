@@ -61,6 +61,13 @@ jobs:
           sleep 4
           curl --fail --retry 5 --retry-all-errors http://127.0.0.1:8080/api/ready
           curl --fail http://127.0.0.1:8080/api/config?city=astana
+      - name: Capture disposable Compose diagnostics on failure
+        if: failure()
+        run: |
+          if [ -f .env.enterprise.local ]; then
+            docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml ps -a
+            docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml logs --no-color --tail=150 proxy app1 app2
+          fi
       - name: Shut down disposable integration services
         if: always()
         run: |

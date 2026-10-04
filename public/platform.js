@@ -63,21 +63,39 @@ export function apiRequest(...args){if(['/login','/register','/auth/mfa/login','
 export function getPhotoBlob(path,options){client??=createApiClient({native:isNative(),apiBase:bridge()?.apiBase||''});return client.photoBlob(path,options);}
 export function cancelSso(){ssoGeneration++;verifier='';clearTimeout(verifierTimer);}
 export function clearSession(){client?.clear();cancelSso();}
+export function locationError(error){
+ const code=error?.code;
+ const messages={
+  'OS-PLUG-GLOC-0003':[1,'Разрешите точную геолокацию в настройках приложения, затем нажмите «Моё положение» снова.'],
+  'OS-PLUG-GLOC-0007':[2,'Геолокация устройства выключена. Включите её в настройках и повторите попытку.'],
+  'OS-PLUG-GLOC-0008':[1,'Доступ к геолокации ограничен настройками устройства. Проверьте разрешения приложения.'],
+  'OS-PLUG-GLOC-0009':[2,'Геолокация устройства не включена. Включите её в настройках и повторите попытку.'],
+  'OS-PLUG-GLOC-0010':[3,'Не удалось получить GPS вовремя. Выйдите на открытое место и повторите попытку.'],
+  'OS-PLUG-GLOC-0014':[2,'Проверьте сервисы геолокации Google Play и повторите попытку.'],
+  'OS-PLUG-GLOC-0015':[2,'Сервисы геолокации Google Play недоступны. Проверьте их настройки.'],
+  'OS-PLUG-GLOC-0017':[2,'Включите интернет и геолокацию устройства, затем повторите попытку.'],
+  1:[1,'Разрешите точную геолокацию в настройках устройства, затем повторите попытку.'],
+  2:[2,'Координаты недоступны. Проверьте геолокацию устройства и попробуйте на открытом месте.'],
+  3:[3,'Не удалось получить GPS вовремя. Выйдите на открытое место и повторите попытку.']
+ };
+ const [normalized,message]=messages[code]||[2,'Не удалось получить GPS. Проверьте геолокацию и повторите попытку.'];
+ return Object.assign(new Error(message),{code:normalized,nativeCode:typeof code==='string'?code:undefined});
+}
 export function watchLocation(success,error){
  let stopped=false,id;const native=isNative();
  const stop=async()=>{stopped=true;await started;if(id!==undefined){const current=id;id=undefined;if(native)await bridge().geolocation.clearWatch({id:current});else navigator.geolocation.clearWatch(current);}};
  const options={enableHighAccuracy:true,maximumAge:5000,timeout:20000,minimumUpdateInterval:7000,interval:7000};
- const accept=position=>{if(!stopped)success(position);};const reject=err=>{if(!stopped)error(err);};
+ const accept=position=>{if(!stopped)success(position);};const reject=err=>{if(!stopped)error(locationError(err));};
  const started=(async()=>{
   try{
-   if(native){const permission=await bridge().geolocation.requestPermissions({permissions:['location']});if(stopped)return;if(permission.location!=='granted')throw new Error('Разрешите точную геолокацию в настройках приложения.');id=await bridge().geolocation.watchPosition(options,(position,err)=>{if(err)reject(err);else if(position)accept(position);});}
+   if(native){const permission=await bridge().geolocation.requestPermissions({permissions:['location']});if(stopped)return;if(permission.location!=='granted')throw Object.assign(new Error('Location permission denied'),{code:'OS-PLUG-GLOC-0003'});id=await bridge().geolocation.watchPosition(options,(position,err)=>{if(err)reject(err);else if(position)accept(position);});}
    else{if(!navigator.geolocation)throw new Error('Геолокация не поддерживается');id=navigator.geolocation.watchPosition(accept,reject,options);}
   }catch(err){reject(err);}
  })();
  return {stop};
 }
 function base64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
-let verifier='',verifierTimer,ssoStarted=0,ssoGeneration=0,authCallback=()=>{};
+let verifier='',verifierTimer,ssoStarted=0,ssoGeneration=0,handledSsoGeneration=-1,authCallback=()=>{};
 export async function startSso(){
  if(!isNative()){location.assign('/api/auth/sso/start');return;}
  cancelSso();const generation=ssoGeneration;verifier=base64url(crypto.getRandomValues(new Uint8Array(32)));ssoStarted=Date.now();verifierTimer=setTimeout(()=>{verifier='';},10*60*1000);
@@ -89,7 +107,10 @@ export async function handleDeepLink(rawUrl){
  let url;try{url=new URL(rawUrl);}catch{return false;}
  if(url.protocol!=='cityquest:'||url.hostname!=='auth'||url.pathname!=='/callback'||url.username||url.password||url.port||url.hash)return false;
  const code=url.searchParams.get('code');if(!/^[a-f0-9]{64}$/.test(code||''))return false;
- const codeVerifier=verifier,generation=ssoGeneration,started=ssoStarted;verifier='';clearTimeout(verifierTimer);
+ // Android may deliver the same callback both as launch URL and appUrlOpen.
+ // Claim the attempt before awaiting anything so a duplicate cannot report a false failure.
+ if(handledSsoGeneration===ssoGeneration)return true;
+ const codeVerifier=verifier,generation=ssoGeneration,started=ssoStarted;handledSsoGeneration=generation;verifier='';clearTimeout(verifierTimer);
  try{
   await bridge()?.browser.close().catch(()=>{});
   if(generation!==ssoGeneration)return true;
@@ -103,11 +124,17 @@ export function consumeWebMfaChallenge(){
  if(params.has('mfaChallenge'))history.replaceState(null,'',location.pathname+location.search);
  return /^[a-f0-9]{64}$/.test(challenge||'')?challenge:null;
 }
-export async function initializePlatform({onInactive,onAuth}){
+export async function initializePlatform({onInactive=()=>{},onActive=()=>{},onAuth=()=>{}}={}){
  authCallback=onAuth;
- document.addEventListener('visibilitychange',()=>{if(document.hidden)void onInactive();});
+ let nativeActive=true,active=!document.hidden,inactiveWork=Promise.resolve(),transition=0;
+ const updateActivity=()=>{
+  const next=nativeActive&&!document.hidden;if(next===active)return;active=next;const version=++transition;
+  if(!active){try{inactiveWork=Promise.resolve(onInactive()).catch(()=>{});}catch{inactiveWork=Promise.resolve();}}
+  else void inactiveWork.then(()=>{if(active&&version===transition)return onActive();}).catch(()=>{});
+ };
+ document.addEventListener('visibilitychange',updateActivity);
  if(isNative()){
-  await bridge().app.addListener('appStateChange',({isActive})=>{if(!isActive)void onInactive();});
+  await bridge().app.addListener('appStateChange',({isActive})=>{nativeActive=isActive;updateActivity();});
   await bridge().app.addListener('appUrlOpen',({url})=>{void handleDeepLink(url);});
   await bridge().app.addListener('backButton',()=>{const dialog=document.querySelector('dialog[open]');if(dialog)dialog.close();else void bridge().app.minimizeApp();});
   const launch=await bridge().app.getLaunchUrl();if(launch?.url)await handleDeepLink(launch.url);

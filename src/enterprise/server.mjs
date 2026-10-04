@@ -81,14 +81,21 @@ export async function createEnterpriseApp({db,env=process.env,keys,secure,origin
   const photoResult=await photos(ctx);if(photoResult!==undefined||ctx.res.writableEnded)return photoResult;
   const gameResult=await game(ctx);if(gameResult!==undefined)return gameResult;
   const manageResult=await manage(ctx);if(manageResult!==undefined)return manageResult;
-  if(path==='/api/admin/metrics'&&method==='GET'){
-   auth.required(user,['admin']);const samples=[...metrics.durations].sort((a,b)=>a-b),quantile=f=>samples[Math.min(samples.length-1,Math.floor(samples.length*f))]||0;
-   return {admission:admission.snapshot(),database:db.metrics?.(),instance_id:cfg.instanceId,uptime_seconds:Math.floor((Date.now()-started)/1000),requests:metrics.requests,errors:metrics.errors,statuses:metrics.statuses,latency_ms:{p50:quantile(.5),p95:quantile(.95),p99:quantile(.99),sample_count:samples.length},active_sessions:Number((await db.get('SELECT count(*) n FROM sessions WHERE expires>$1 AND last_seen>$2',[Date.now(),Date.now()-cfg.idleMs])).n),cities:await Promise.all(Object.keys(CITIES).map(async id=>({id,organizations:Number((await db.get('SELECT count(*) n FROM organizations WHERE city_id=$1',[id])).n),quests:Number((await db.get('SELECT count(*) n FROM quests WHERE city_id=$1',[id])).n)}))),deployment:'postgresql-shared',database_failover:'external-cluster-or-managed-service'};
-  }
-  if(path==='/api/admin/audit/verify'&&method==='GET'){auth.required(user,['admin']);await throttle(`audit-verify:${user.id}`,1,60000);return verifyAudit(db,cfg.keys.auditKey);}
-  if(path==='/api/admin/audit'&&method==='GET'){
-   auth.required(user,['admin']);const limit=Math.min(500,Math.max(1,Math.trunc(Number(url.searchParams.get('limit'))||100))),before=Math.max(0,Math.trunc(Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER));
-   return {items:await db.all('SELECT id,actor_id,action,target,created_at,metadata,request_id,prev_hash,event_hash FROM audit WHERE id<$1 ORDER BY id DESC LIMIT $2',[before,limit])};
+  if(['/api/admin/metrics','/api/admin/audit','/api/admin/audit/verify'].includes(path)&&method==='GET'){
+   auth.required(user,['admin']);
+   if(path==='/api/admin/audit/verify')await throttle(`audit-verify:${user.id}`,1,60000);
+   // Authorization and protected reads share actor/session locks. A permission
+   // change committed after the initial HTTP session lookup must take effect.
+   return db.transaction(async tx=>{
+    const fresh=await auth.freshActor(tx,user);auth.required(fresh,['admin']);
+    if(path==='/api/admin/audit/verify')return verifyAudit(tx,cfg.keys.auditKey);
+    if(path==='/api/admin/audit'){
+     const limit=Math.min(500,Math.max(1,Math.trunc(Number(url.searchParams.get('limit'))||100))),before=Math.max(0,Math.trunc(Number(url.searchParams.get('before'))||Number.MAX_SAFE_INTEGER));
+     return {items:await tx.all('SELECT id,actor_id,action,target,created_at,metadata,request_id,prev_hash,event_hash FROM audit WHERE id<$1 ORDER BY id DESC LIMIT $2',[before,limit])};
+    }
+    const samples=[...metrics.durations].sort((a,b)=>a-b),quantile=f=>samples[Math.min(samples.length-1,Math.floor(samples.length*f))]||0;
+    return {admission:admission.snapshot(),database:db.metrics?.(),instance_id:cfg.instanceId,uptime_seconds:Math.floor((Date.now()-started)/1000),requests:metrics.requests,errors:metrics.errors,statuses:metrics.statuses,latency_ms:{p50:quantile(.5),p95:quantile(.95),p99:quantile(.99),sample_count:samples.length},active_sessions:Number((await tx.get('SELECT count(*) n FROM sessions WHERE expires>$1 AND last_seen>$2',[Date.now(),Date.now()-cfg.idleMs])).n),cities:await Promise.all(Object.keys(CITIES).map(async id=>({id,organizations:Number((await tx.get('SELECT count(*) n FROM organizations WHERE city_id=$1',[id])).n),quests:Number((await tx.get('SELECT count(*) n FROM quests WHERE city_id=$1',[id])).n)}))),deployment:'postgresql-shared',database_failover:'external-cluster-or-managed-service'};
+   });
   }
   fail('Маршрут не найден',404);
  }
