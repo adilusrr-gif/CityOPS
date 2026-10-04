@@ -1,10 +1,10 @@
+import {parseQuestMetadata,publicQuest} from '../quest-metadata.mjs';
 import {randomBytes} from 'node:crypto';
 import {id,hash,fail,text,number,choice,point,normalizeCode,city} from '../domain.mjs';
 import {DEFAULT_CITY} from '../cities.mjs';
 import {osmQuery} from '../osm.mjs';
 import {enterpriseListRoutes} from '../features/list-routes.mjs';
 
-const publicQuest=({code_hash,...rest})=>rest;
 const MANAGER_ROLES=['business','admin'];
 const RESOURCE_ID=/^[a-zA-Z0-9-]+$/;
 const stale=()=>fail('Запись изменена. Обновите данные перед сохранением.',409);
@@ -79,7 +79,7 @@ async function parseQuest(ctx,tx,body,user,old,organizations) {
  if(starts!==null&&ends!==null&&ends<=starts)fail('Окончание должно быть после начала');
  const cap=body.max_completions==null||body.max_completions===''?null:Math.round(number(body.max_completions,'Лимит наград',1,1000000));
  if(old&&cap!==null&&(await tx.get('SELECT count(*) n FROM completions WHERE quest_id=$1',[old.id])).n>cap)fail('Лимит меньше уже выданных наград');
- return {city_id:c.id,title:text(body.title,'Название',160),description:text(body.description,'Описание',3000,10),lng:body.lng,lat:body.lat,radius:Math.round(number(body.radius??150,'Радиус',30,500)),xp:Math.round(number(body.xp??100,'Опыт',10,1000)),scope,verification,code_hash:codeHash,status,organization_id:orgId,assigned_to:assigned,goal:Math.round(number(body.goal??20,'Общая цель',1,10000)),starts_at:starts,ends_at:ends,max_completions:cap};
+ return {city_id:c.id,title:text(body.title,'Название',160),description:text(body.description,'Описание',3000,10),lng:body.lng,lat:body.lat,radius:Math.round(number(body.radius??150,'Радиус',30,500)),xp:Math.round(number(body.xp??100,'Опыт',10,1000)),scope,verification,code_hash:codeHash,status,organization_id:orgId,assigned_to:assigned,goal:Math.round(number(body.goal??20,'Общая цель',1,10000)),starts_at:starts,ends_at:ends,max_completions:cap,...parseQuestMetadata(body,old)};
 }
 // Organization rows always precede quests. A concurrent relink is a conflict,
 // not a reason to acquire a second organization lock out of order.

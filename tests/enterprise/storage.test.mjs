@@ -1,3 +1,4 @@
+import {REMOVE_QUEST_METADATA_SQL} from '../helpers/quest-schema.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -18,7 +19,7 @@ const key=Buffer.alloc(32,47);
 
 test('PG migrations, complete bundled cities, account-free seed and idempotence',async t=>{
  const {db,db2}=await fixture(t);
- assert.deepEqual(await Promise.all([migratePostgres(db),migratePostgres(db2)]),[{version:6,migrated:false},{version:6,migrated:false}]);
+ assert.deepEqual(await Promise.all([migratePostgres(db),migratePostgres(db2)]),[{version:7,migrated:false},{version:7,migrated:false}]);
  for(const table of ADVENTURE_TABLES)assert.equal((await db.get(`SELECT COUNT(*) AS n FROM ${table}`)).n,0,'DDL must leave import destination empty');
  const seeded=await seedPostgres(db);
  assert.equal(seeded.counts.organizations,13128);assert.equal(seeded.counts.quests,24);assert.equal(seeded.counts.users,0);
@@ -37,6 +38,7 @@ test('PostgreSQL schema 4 upgrades additively and preserves paid plans and pet d
  const {db}=await fixture(t),now=1780000000000;
  await db.transaction(async tx=>{
   for(const table of [...ADVENTURE_TABLES].reverse())await tx.query(`DROP TABLE ${table}`);
+  await tx.query(REMOVE_QUEST_METADATA_SQL);
   await tx.query('DELETE FROM schema_migrations WHERE version>=5');
   await tx.query("INSERT INTO users(id,email,name,password,role,xp,created_at) VALUES('upgrade-user','upgrade@example.test','Игрок','kept-password','player',400,$1)",[now]);
   await tx.query("INSERT INTO pets(user_id,name,species,color,xp,created_at,updated_at) VALUES('upgrade-user','Друг','fox','amber',120,$1,$1)",[now]);
@@ -44,8 +46,8 @@ test('PostgreSQL schema 4 upgrades additively and preserves paid plans and pet d
   await tx.query("INSERT INTO billing_entitlements(id,order_id,user_id,plan,starts_at,ends_at) VALUES('kept-entitlement','kept-order','upgrade-user','plus',$1,$2)",[now,now+2592000000]);
  });
  const before={pet:await db.get('SELECT * FROM pets'),order:await db.get('SELECT * FROM billing_orders'),entitlement:await db.get('SELECT * FROM billing_entitlements')};
- assert.deepEqual(await migratePostgres(db),{version:6,migrated:true});
- assert.deepEqual(await migratePostgres(db),{version:6,migrated:false});
+ assert.deepEqual(await migratePostgres(db),{version:7,migrated:true});
+ assert.deepEqual(await migratePostgres(db),{version:7,migrated:false});
  assert.deepEqual(await db.get('SELECT * FROM pets'),before.pet);
  assert.deepEqual(await db.get('SELECT * FROM billing_orders'),before.order);
  assert.deepEqual(await db.get('SELECT * FROM billing_entitlements'),before.entitlement);
@@ -134,13 +136,13 @@ async function addAdventureSource(source){
  source.prepare("INSERT INTO photo_reports(id,photo_id,user_id,reason,status,created_at) VALUES('report-original','photo-original','voter','Проверить публикацию','open',?)").run(now);
 }
 
-for(const sourceVersion of [4,5])test(`SQLite schema ${sourceVersion} import preserves photos, adventure ledgers, pet ciphertext, billing and audit signatures`,async t=>{
+for(const sourceVersion of [4,5,6])test(`SQLite schema ${sourceVersion} import preserves photos, adventure ledgers, pet ciphertext, billing and audit signatures`,async t=>{
  const {db}=await fixture(t),directory=mkdtempSync(join(tmpdir(),'cq-pg-import-'));
  t.after(()=>rmSync(directory,{recursive:true,force:true}));
  const path=join(directory,'source.sqlite'),encryptionKey=randomBytes(32),source=createSource(path,encryptionKey);
  t.after(()=>source.close());
  await addAdventureSource(source);
- if(sourceVersion===4)source.exec('DELETE FROM schema_migrations WHERE version=5; PRAGMA user_version=4');
+ if(sourceVersion<6){source.exec(REMOVE_QUEST_METADATA_SQL);source.exec(`DELETE FROM schema_migrations WHERE version>${sourceVersion}; PRAGMA user_version=${sourceVersion}`);}
  const expectedHead=verifySqliteAudit(source,key).head;
  const result=await importSqlitePostgres({db,sqlitePath:path,auditKey:key,encryptionKey});
  assert.equal(result.imported,true);assert.deepEqual(result.audit.head,expectedHead);
@@ -167,6 +169,7 @@ test('SQLite schema 2 import remains supported without feature tables',async t=>
  t.after(()=>rmSync(directory,{recursive:true,force:true}));
  const path=join(directory,'source.sqlite'),encryptionKey=randomBytes(32),source=createSource(path,encryptionKey);t.after(()=>source.close());
  for(const table of [...FEATURE_TABLES,...ADVENTURE_TABLES].reverse())source.exec(`DROP TABLE ${table}`);
+ source.exec(REMOVE_QUEST_METADATA_SQL);
  source.exec('DELETE FROM schema_migrations WHERE version>=3; PRAGMA user_version=2');
  const result=await importSqlitePostgres({db,sqlitePath:path,auditKey:key,encryptionKey});
  assert.equal(result.imported,true);assert.equal(result.counts.users,1);
@@ -179,6 +182,7 @@ test('SQLite schema 3 import remains supported without adventure tables',async t
  t.after(()=>rmSync(directory,{recursive:true,force:true}));
  const path=join(directory,'source.sqlite'),encryptionKey=randomBytes(32),source=createSource(path,encryptionKey);t.after(()=>source.close());
  for(const table of [...ADVENTURE_TABLES].reverse())source.exec(`DROP TABLE ${table}`);
+ source.exec(REMOVE_QUEST_METADATA_SQL);
  source.exec('DELETE FROM schema_migrations WHERE version>=4; PRAGMA user_version=3');
  const result=await importSqlitePostgres({db,sqlitePath:path,auditKey:key,encryptionKey});
  assert.equal(result.imported,true);assert.equal(result.counts.pets,1);assert.equal(result.counts.billing_orders,1);

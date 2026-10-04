@@ -1,4 +1,6 @@
 import {CITIES} from './cities.mjs';
+import {QUEST_GUIDANCE} from './quest-editorial.mjs';
+import {parseQuestMetadata} from './quest-metadata.mjs';
 
 // Editorial starting points. Almaty includes approximate approaches; Astana
 // coordinates are source node/centres from the bundled snapshot. See docs/DATA.md.
@@ -9,7 +11,7 @@ export const places = [
   ['arbat','Арбат · улица Жибек Жолы','landmark',76.9431,43.2614,'https://visitalmaty.kz/'],
   ['opera','Театр оперы и балета имени Абая','culture',76.9458545,43.2486619,'https://www.openstreetmap.org/relation/6609239'],
   ['republic','Площадь Республики','landmark',76.9457,43.2383,'https://visitalmaty.kz/'],
-  ['museum','Центральный государственный музей','culture',76.9507469,43.2358799,'https://www.openstreetmap.org/way/444574821'],
+  ['museum','Национальный центральный музей Республики Казахстан','culture',76.9507469,43.2358799,'https://www.openstreetmap.org/way/444574821'],
   ['palace','Площадь перед Дворцом Республики','culture',76.9587,43.2426,'https://www.openstreetmap.org/way/53280121'],
   ['president-park','Парк Первого Президента · колоннада','park',76.8869809,43.1938175,'https://www.openstreetmap.org/way/292274862'],
   ['botanical','Главный ботанический сад · вход','park',76.9137,43.2257,'https://www.openstreetmap.org/relation/3048271'],
@@ -73,7 +75,8 @@ function seedCity(db,cityId,cityPlaces,cityStories,metaKey,radius) {
    const organizationId=existing?.id||`seed-${key}`;
    if(!existing)db.prepare('INSERT INTO organizations(id,name,category,lng,lat,address,description,status,source,osm_id,created_at,city_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').run(organizationId,name,category,lng,lat,`${CITIES[cityId].name} · уточните вход на месте`,'Городская достопримечательность. Партнёрство с проектом не заявлено. Точка из карты не гарантирует доступный вход.','approved',source,osmId,now,cityId);
    const safety=cityId==='astana'?' Выполняй днём с открытой пешеходной территории. Учитывай погоду, ветер и гололёд; при закрытом доступе отложи задание.':' Выполняй днём, только с доступной пешеходной территории.';
-   db.prepare('INSERT INTO quests(id,title,description,lng,lat,radius,xp,scope,verification,organization_id,status,goal,created_at,city_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').run(`quest-${key}`,cityStories[i][0],cityStories[i][1]+safety,lng,lat,radius,100+i*10,i%3===0?'personal':'public','checkin',organizationId,'published',20,now,cityId);
+   const guidance=parseQuestMetadata(QUEST_GUIDANCE[key]);
+   db.prepare('INSERT INTO quests(id,title,description,lng,lat,radius,xp,scope,verification,organization_id,status,goal,created_at,city_id,difficulty,difficulty_reason,estimated_minutes,objective_steps_json,hint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').run(`quest-${key}`,cityStories[i][0],cityStories[i][1]+safety,lng,lat,radius,100+i*10,i%3===0?'personal':'public','checkin',organizationId,'published',20,now,cityId,guidance.difficulty,guidance.difficulty_reason,guidance.estimated_minutes,guidance.objective_steps_json,guidance.hint);
   }
   db.prepare('INSERT INTO meta(key,value) VALUES(?,?)').run(metaKey,'1');
   db.exec('COMMIT');

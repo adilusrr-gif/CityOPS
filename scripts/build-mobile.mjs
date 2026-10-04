@@ -16,6 +16,6 @@ let html=await readFile(resolve(out,'index.html'),'utf8');
 html=html.replace('<meta charset="UTF-8">',`<meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="${csp}">`).replace('src="/app.js"','src="/mobile.js"');
 await writeFile(resolve(out,'index.html'),html);
 await build({entryPoints:[resolve(root,'mobile/src/entry.js')],outfile:resolve(out,'mobile.js'),bundle:true,format:'esm',platform:'browser',target:['chrome109','safari16.4'],minify:true,define:{__CITYQUEST_API_BASE__:JSON.stringify(url.origin)},legalComments:'eof'});
-for(const file of ['app.js','map.js','platform.js','companion.js','adventures.js','team-presence.js','sw.js'])await rm(resolve(out,file),{force:true});
+for(const file of ['app.js','map.js','quest-ui.js','platform.js','companion.js','adventures.js','team-presence.js','sw.js'])await rm(resolve(out,file),{force:true});
 await writeFile(resolve(out,'build-info.json'),JSON.stringify({version:VERSION,apiOrigin:url.origin,bundledAssets:true},null,2)+'\n');
 console.log('Bundled shared web UI for Android/iOS. API origin: '+url.origin);

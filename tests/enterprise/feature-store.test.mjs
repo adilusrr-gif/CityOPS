@@ -1,3 +1,4 @@
+import {REMOVE_QUEST_METADATA_SQL} from '../helpers/quest-schema.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTestDatabase} from './db-fixture.mjs';
@@ -43,13 +44,14 @@ test('PostgreSQL actor and additional-account locks serialize cross-account oper
 test('PostgreSQL schema 3 upgrades additively and validates every applied migration checksum',async t=>{
  const {db}=await fixture(t);
  for(const table of [...FEATURE_TABLES,...ADVENTURE_TABLES].reverse())await db.query(`DROP TABLE ${table}`);
+ await db.query(REMOVE_QUEST_METADATA_SQL);
  await db.run('DELETE FROM schema_migrations WHERE version>=4');
  await db.run("INSERT INTO users(id,email,name,password,role,xp,created_at) VALUES('kept','kept@example.test','Kept','password-hash','player',540,1700000000000)");
  await db.run("INSERT INTO sessions(token,user_id,expires,id,created_at,last_seen,mfa_verified) VALUES('hash','kept',1900000000000,'session',1700000000000,1700000000000,1)");
  await db.run("INSERT INTO audit(id,actor_id,action,target,created_at,event_hash) VALUES(1,'kept','kept','kept',1700000000000,'signature')");
  const before={user:await db.get("SELECT * FROM users WHERE id='kept'"),session:await db.get("SELECT * FROM sessions WHERE id='session'"),audit:await db.get('SELECT * FROM audit')};
- assert.deepEqual(await migratePostgres(db),{version:6,migrated:true});
- assert.deepEqual(await migratePostgres(db),{version:6,migrated:false});
+ assert.deepEqual(await migratePostgres(db),{version:7,migrated:true});
+ assert.deepEqual(await migratePostgres(db),{version:7,migrated:false});
  assert.deepEqual(await db.get("SELECT * FROM users WHERE id='kept'"),before.user);
  assert.deepEqual(await db.get("SELECT * FROM sessions WHERE id='session'"),before.session);
  assert.deepEqual(await db.get('SELECT * FROM audit'),before.audit);

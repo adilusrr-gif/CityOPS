@@ -32,7 +32,7 @@ test('http: shared sessions, rewards and teams survive stopping one application 
   const h=await pair(t,{seed:true});
   for(const index of [0,1]){
     const ready=await h.request(index,'/api/ready');
-    assert.equal(ready.status,200);assert.equal(ready.body.schema,6);
+    assert.equal(ready.status,200);assert.equal(ready.body.schema,7);
   }
   const registered=await h.request(0,'/api/register',{method:'POST',body:credentials,headers:{Origin:h.apps[0].base}});
   assert.equal(registered.status,200);assert.equal(Object.hasOwn(registered.body,'accessToken'),false);

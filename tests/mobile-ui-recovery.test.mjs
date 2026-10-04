@@ -2,12 +2,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import * as questUI from '../public/quest-ui.js';
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 async function app({api}={}){
  const listeners={},nodes=new Map(),calls=[],state={watchStarts:0,mapStarts:0,cleared:0};
  const node=id=>{if(!nodes.has(id))nodes.set(id,{id,innerHTML:'',textContent:'',open:false,isConnected:true,hidden:false,dataset:{},classList:{toggle(){}},setAttribute(){},addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},close(){this.open=false;},showModal(){this.open=true;}});return nodes.get(id);};
  const defaults=async path=>path==='/me'?{user:null}:path.startsWith('/quests?')?{items:[],total:0}:path.startsWith('/config?')?{city:{id:'almaty',name:'Алматы',bounds:[[76,43],[77,44]]}}:{enabled:false};
- const context=vm.createContext({apiRequest:async(...args)=>{calls.push(args);return (api||defaults)(...args);},createCompanionFeatures:()=>({invalidate(){}}),createAdventureFeatures:()=>({invalidate(){},loadMap(){}}),createTeamPresence:()=>({reset(){},clear(){state.cleared++;},update(){}}),watchLocation:()=>{state.watchStarts++;},initMap:async()=>{state.mapStarts++;},setMapData(){},resizeMap(){},isNative:()=>true,clearSession(){},cancelSso(){},document:{hidden:false,activeElement:null,getElementById:node,querySelectorAll:()=>[],addEventListener(){}},navigator:{onLine:true},window:{addEventListener:(name,callback)=>listeners[name]=callback},localStorage:{getItem(){}},setTimeout:()=>1,clearTimeout(){},setInterval(){},URL,URLSearchParams,AbortController,performance});
+ const context=vm.createContext({...questUI,apiRequest:async(...args)=>{calls.push(args);return (api||defaults)(...args);},createCompanionFeatures:()=>({invalidate(){}}),createAdventureFeatures:()=>({invalidate(){},loadMap(){}}),createTeamPresence:()=>({reset(){},clear(){state.cleared++;},update(){}}),watchLocation:()=>{state.watchStarts++;},initMap:async()=>{state.mapStarts++;},setMapData(){},resizeMap(){},isNative:()=>true,clearSession(){},cancelSso(){},document:{hidden:false,activeElement:null,getElementById:node,querySelectorAll:()=>[],addEventListener(){}},navigator:{onLine:true},window:{addEventListener:(name,callback)=>listeners[name]=callback},localStorage:{getItem(){}},setTimeout:()=>1,clearTimeout(){},setInterval(){},URL,URLSearchParams,AbortController,performance});
  let source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace('export const api=','const api=');source=source.slice(0,source.indexOf('const webMfaChallenge='));
  vm.runInContext(source+'\nglobalThis.ui={S,recoverConnection,startGPS};',context);
  return {context,node,calls,state,listeners,...context.ui};

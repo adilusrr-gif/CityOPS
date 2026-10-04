@@ -6,7 +6,7 @@ import {openDb} from '../db.mjs';
 import {createFeatureStore} from '../features/store.mjs';
 import {seedAdventureFeatures} from '../features/seed.mjs';
 
-export const PG_SCHEMA_VERSION = 6;
+export const PG_SCHEMA_VERSION = 7;
 const MIGRATION_LOCK = [172989, 1];
 const types = {getTypeParser(oid, format) {
  if (oid === 20 && format !== 'binary') return value => {
@@ -135,6 +135,7 @@ export async function migratePostgres(db) {
   {version:4, file:'004-pet-billing.sql'},
   {version:5, file:'005-adventures.sql'},
   {version:6, file:'006-query-indexes.sql'},
+  {version:7, file:'007-quest-metadata.sql'},
  ].map(migration => {
   const sql=readFileSync(new URL(`./sql/${migration.file}`,import.meta.url),'utf8');
   return {...migration,sql,checksum:createHash('sha256').update(sql).digest('hex')};

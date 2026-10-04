@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 // Versioned, transactional migrations preserve existing accounts and progress.
-export const SCHEMA_VERSION=5;
+export const SCHEMA_VERSION=6;
 function hasColumn(db,table,column){return db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name===column);}
 function addColumn(db,table,column,definition){if(!hasColumn(db,table,column))db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);}
 function migrateV2(db){
@@ -64,6 +64,7 @@ export function migrate(db){
   {version:3,file:'004-pet-billing.sql'},
   {version:4,file:'005-adventures.sql'},
   {version:5,file:'006-query-indexes.sql'},
+  {version:6,file:'007-quest-metadata.sql'},
  ]){
   if(current>=version)continue;
   db.exec('BEGIN IMMEDIATE');

@@ -1,3 +1,4 @@
+import {parseQuestMetadata,publicQuest} from './quest-metadata.mjs';
 import {VERSION} from './version.mjs';
 import {inspectEncryptionSync,requireValidEncryption} from './key-check.mjs';
 import {createWorkTracker} from './lifecycle.mjs';
@@ -27,7 +28,6 @@ import {createAdventureRoutes} from './features/adventure-routes.mjs';
 import {createPhotoRoutes,prunePhotoUsage} from './features/photo-routes.mjs';
 import {createListRoutes} from './features/list-routes.mjs';
 const publicRoot=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
-const publicQuest=q=>{const {code_hash,...rest}=q;return rest;};
 const publicOrg=o=>{const {owner_id,...rest}=o;return rest;};
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json'};
 export function createApp({db,secure,origin,env=process.env,keys,petFetchImpl,passwordService}={}) {
@@ -61,7 +61,7 @@ export function createApp({db,secure,origin,env=process.env,keys,petFetchImpl,pa
   const scope=choice(b.scope||'public',['public','personal'],'тип квеста'),assigned=user.role==='admin'?validAssignee(b.assigned_to):(old?.assigned_to??null);if(assigned&&scope!=='personal')fail('Назначать игроку можно только индивидуальный квест');
   const starts=b.starts_at==null||b.starts_at===''?null:Math.round(number(b.starts_at,'Начало',0,9000000000000)),ends=b.ends_at==null||b.ends_at===''?null:Math.round(number(b.ends_at,'Окончание',0,9000000000000));if(starts!==null&&ends!==null&&ends<=starts)fail('Окончание должно быть после начала');
   const cap=b.max_completions==null||b.max_completions===''?null:Math.round(number(b.max_completions,'Лимит наград',1,1000000));if(old&&cap!==null&&db.prepare('SELECT count(*) n FROM completions WHERE quest_id=?').get(old.id).n>cap)fail('Лимит меньше уже выданных наград');
-  return {city_id:c.id,title:text(b.title,'Название',160),description:text(b.description,'Описание',3000,10),lng:b.lng,lat:b.lat,radius:Math.round(number(b.radius??150,'Радиус',30,500)),xp:Math.round(number(b.xp??100,'Опыт',10,1000)),scope,verification,code_hash:codeHash,status,organization_id:orgId,assigned_to:assigned,goal:Math.round(number(b.goal??20,'Общая цель',1,10000)),starts_at:starts,ends_at:ends,max_completions:cap};
+  return {city_id:c.id,title:text(b.title,'Название',160),description:text(b.description,'Описание',3000,10),lng:b.lng,lat:b.lat,radius:Math.round(number(b.radius??150,'Радиус',30,500)),xp:Math.round(number(b.xp??100,'Опыт',10,1000)),scope,verification,code_hash:codeHash,status,organization_id:orgId,assigned_to:assigned,goal:Math.round(number(b.goal??20,'Общая цель',1,10000)),starts_at:starts,ends_at:ends,max_completions:cap,...parseQuestMetadata(b,old)};
  }
  async function route(req,res,url){const p=url.pathname,method=req.method,user=auth.session(req),ip=clientIp(req,cfg.trustProxy);const cityId=city(url.searchParams.get('city')||DEFAULT_CITY).id;
   if(p==='/api/health'&&method==='GET')return {ok:true,version:VERSION,deployment:'single-instance-sqlite'};

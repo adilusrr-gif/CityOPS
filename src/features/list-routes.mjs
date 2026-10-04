@@ -1,9 +1,9 @@
-import {fail} from '../domain.mjs';
+import {fail,choice} from '../domain.mjs';
+import {publicQuest,QUEST_DIFFICULTIES,HIDDEN_QUEST_TITLE} from '../quest-metadata.mjs';
 import {EXPLORATION_GRID} from '../product-policy.mjs';
 import {all,get,createFeatureStore} from './store.mjs';
 
 const PUBLIC_ORG_FIELDS='id,name,category,lng,lat,address,description,status,source,osm_id,created_at,city_id,version,updated_at';
-const publicQuest=({code_hash,...row})=>row;
 function integer(value,fallback,max){if(value===null||value===undefined||value==='')return fallback;if(!/^\d+$/.test(String(value))||!Number.isSafeInteger(Number(value))||Number(value)<1||Number(value)>max)fail(`Размер страницы должен быть от 1 до ${max}`);return Number(value);}
 function offset(value){if(value===null||value==='')return 0;if(!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>100000)fail('Некорректное смещение страницы');return Number(value);}
 function encode(value){return Buffer.from(JSON.stringify(value)).toString('base64url');}
@@ -27,19 +27,33 @@ function* organizations({url,cityId},dialect){
  return {...page(rows,limit,scope,row=>[row.name,row.id]),total,offset:start,city_id:cityId};
 }
 function* quests({url,cityId,user},dialect){
- const {params,bind}=bindings([cityId,user?.id||'']),filters=["q.status='published'",'q.city_id=$1','(q.assigned_to IS NULL OR q.assigned_to=$2)'],term=searchTerm(url.searchParams.get('q')),scopeFilter=url.searchParams.get('scope');
+ const {params,bind}=bindings([cityId,user?.id||'']),filters=["q.status='published'",'q.city_id=$1','(q.assigned_to IS NULL OR q.assigned_to=$2)'],term=searchTerm(url.searchParams.get('q')),scopeFilter=url.searchParams.get('scope'),difficulty=url.searchParams.get('difficulty');
  if(scopeFilter&&!['public','personal'].includes(scopeFilter))fail('Неизвестный тип квестов');if(scopeFilter)filters.push(`q.scope=${bind(scopeFilter)}`);
- search(filters,['q.title'],term,bind,dialect);
- const scope=JSON.stringify(['quests',cityId,user?.id||'',term,scopeFilter]),current=cursor(url.searchParams.get('cursor'),scope,['string','number','string']),limit=integer(url.searchParams.get('limit'),100,200),total=yield* count('quests q',filters,params);
- if(current){const s=bind(current[0]),t=bind(current[1]),i=bind(current[2]);filters.push(`(q.scope,q.created_at,q.id)<(${s},${t},${i})`);}
- // Completion and fog membership are indexed lookups for this page only, not a
- // full history download. Geometry uses the same grid as domain.cell().
+ if(difficulty!==null){choice(difficulty,QUEST_DIFFICULTIES,'сложность квеста');filters.push(`q.difficulty=${bind(difficulty)}`);}
+ const countParams=[...params],now=Date.now(),position=user?.id?yield get('SELECT lng,lat,accuracy,updated_at,city_id FROM positions WHERE user_id=$1',[user.id]):null;
+ // Membership remains indexed; no full exploration history is downloaded.
  const lngCell=bind(EXPLORATION_GRID.lngCellSize),latCell=bind(EXPLORATION_GRID.latCellSize);
  const grid=dialect==='postgres'?`(floor(q.lng/${lngCell})::bigint::text || ':' || floor(q.lat/${latCell})::bigint::text)`:`(CAST(CAST(q.lng/${lngCell} AS INTEGER) AS TEXT) || ':' || CAST(CAST(q.lat/${latCell} AS INTEGER) AS TEXT))`;
- const rows=yield all(`SELECT q.*,(SELECT count(*) FROM completions c WHERE c.quest_id=q.id) AS completions,EXISTS(SELECT 1 FROM completions c WHERE c.user_id=$2 AND c.quest_id=q.id) AS completed,EXISTS(SELECT 1 FROM explored e WHERE e.user_id=$2 AND e.city_id=q.city_id AND e.cell=${grid}) AS explored FROM quests q WHERE ${filters.join(' AND ')} ORDER BY q.scope DESC,q.created_at DESC,q.id DESC LIMIT ${bind(limit+1)}`,params);
- const result=page(rows,limit,scope,row=>[row.scope,Number(row.created_at),row.id]),now=Date.now();
- result.items=result.items.map(row=>{const {explored,...quest}=publicQuest(row);return {...quest,completed:!!quest.completed,unlocked:quest.scope==='public'||!!quest.completed||!!explored,completions:quest.scope==='public'?Number(quest.completions):undefined,available:(quest.starts_at===null||quest.starts_at<=now)&&(quest.ends_at===null||quest.ends_at>now)&&(quest.max_completions===null||Number(quest.completions)<quest.max_completions)};});return {...result,total,city_id:cityId};
+ const completed='EXISTS(SELECT 1 FROM completions c WHERE c.user_id=$2 AND c.quest_id=q.id)',explored=`EXISTS(SELECT 1 FROM explored e WHERE e.user_id=$2 AND e.city_id=q.city_id AND e.cell=${grid})`;
+ let nearby='false';
+ if(position&&position.city_id===cityId&&Number.isFinite(position.lng)&&Number.isFinite(position.lat)&&Number.isFinite(position.accuracy)&&position.accuracy>=0&&position.accuracy<=100&&position.updated_at<=now&&now-position.updated_at<=90000){
+  const lng=bind(position.lng),lat=bind(position.lat),accuracy=bind(Math.min(position.accuracy,30)),radians=Math.PI/180;
+  // Exact haversine radius comparison, algebraically equivalent to domain.distance.
+  // Use the SAME predicate for projection and title search/counts. An approximate
+  // bounding box or post-filtering would leak hidden titles or break pagination.
+  const dlat=`sin((q.lat-${lat})*${radians/2})`,dlng=`sin((q.lng-${lng})*${radians/2})`,h=`(${dlat}*${dlat}+cos(q.lat*${radians})*cos(${lat}*${radians})*${dlng}*${dlng})`,threshold=`sin((q.radius+${accuracy})/12742000.0)`;
+  const bounded=dialect==='postgres'?`LEAST(1.0,GREATEST(0.0,${h}))`:`min(1.0,max(0.0,${h}))`;
+  nearby=`(${bounded}<=${threshold}*${threshold})`;
+ }
+ const revealed=`(q.scope='public' OR ${completed} OR ${explored} OR ${nearby})`;
+ if(term)search(filters,[`CASE WHEN ${revealed} THEN q.title ELSE ${bind(HIDDEN_QUEST_TITLE)} END`],term,bind,dialect);
+ const scope=JSON.stringify(['quests',cityId,user?.id||'',term,scopeFilter,difficulty]),current=cursor(url.searchParams.get('cursor'),scope,['string','number','string']),limit=integer(url.searchParams.get('limit'),100,200),total=yield* count('quests q',filters,term?params:countParams);
+ if(current){const s=bind(current[0]),t=bind(current[1]),i=bind(current[2]);filters.push(`(q.scope,q.created_at,q.id)<(${s},${t},${i})`);}
+ const rows=yield all(`SELECT q.*,(SELECT count(*) FROM completions c WHERE c.quest_id=q.id) AS completions,${completed} AS completed,${revealed} AS unlocked FROM quests q WHERE ${filters.join(' AND ')} ORDER BY q.scope DESC,q.created_at DESC,q.id DESC LIMIT ${bind(limit+1)}`,params);
+ const result=page(rows,limit,scope,row=>[row.scope,Number(row.created_at),row.id]);
+ result.items=result.items.map(row=>{const unlocked=!!row.unlocked,quest=publicQuest(row,{hideObjectives:!unlocked});return {...quest,completed:!!quest.completed,unlocked,completions:quest.scope==='public'?Number(quest.completions):undefined,available:(quest.starts_at===null||quest.starts_at<=now)&&(quest.ends_at===null||quest.ends_at>now)&&(quest.max_completions===null||Number(quest.completions)<quest.max_completions)};});return {...result,total,city_id:cityId};
 }
+
 function* cellsPage({url,cityId,user},dialect,{viewport=false}={}){
  const {params,bind}=bindings([user.id,cityId]),filters=['user_id=$1','city_id=$2'],bounds=viewport?bbox(url.searchParams.get('bbox')):null,limit=integer(url.searchParams.get('limit'),500,1000);
  if(viewport&&!bounds)fail('Укажите область карты');
@@ -70,7 +84,7 @@ function* managementPage(ctx,dialect,kind,actor,{standalone=false}={}){
  const scope=JSON.stringify(['manage',kind,cityId,actor.id,term]),cur=cursor(url.searchParams.get(standalone?'cursor':kind+'_cursor'),scope,['number','string']),total=yield* count(table,filters,params);
  after(filters,cur,[kind==='quests'?'q.created_at':'created_at',kind==='quests'?'q.id':'id'],bind);
  const result=page(yield all(`SELECT ${fields} FROM ${table} WHERE ${filters.join(' AND ')} ORDER BY ${kind==='quests'?'q.':''}created_at DESC,${kind==='quests'?'q.':''}id DESC LIMIT ${bind(limit+1)}`,params),limit,scope,row=>[Number(row.created_at),row.id]);
- if(kind==='quests')result.items=result.items.map(publicQuest);return {...result,total};
+ if(kind==='quests')result.items=result.items.map(row=>publicQuest(row));return {...result,total};
 }
 function* management(ctx,dialect,actor){
  const organizations=yield* managementPage(ctx,dialect,'organizations',actor),quests=yield* managementPage(ctx,dialect,'quests',actor),users=actor.role==='admin'?yield* managementPage(ctx,dialect,'users',actor):{items:[],total:0,next_cursor:null,limit:50};

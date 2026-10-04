@@ -28,3 +28,24 @@ body{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left)
 @media(max-width:760px){.rail{justify-content:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;top:env(safe-area-inset-top,0px)}.nav{flex:1 0 48px}.connection-status .button{min-height:44px}}
 /* Use the dynamic viewport when supported; device keyboard behavior still needs native QA. */
 @supports(height:100dvh){dialog{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}}
+
+/* Difficulty always has a word and distinct symbol as well as colour. */
+.difficulty-easy{--difficulty:#80dcab;color:var(--difficulty)}
+.difficulty-moderate{--difficulty:#ffba76;color:var(--difficulty)}
+.difficulty-hard{--difficulty:#ccb0ff;color:var(--difficulty)}
+.difficulty-unknown{--difficulty:#b0bbc9;color:var(--difficulty)}
+.difficulty-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--difficulty);border-radius:7px;padding:3px 7px;font-size:11px;line-height:1.5;background:#0d152166}
+.quest-planning{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:8px 0 13px;font-size:11px;color:#c3cfe1}
+.quest-filter-group{border:0;padding:0;min-width:0;margin:12px 0 16px;gap:6px}
+.quest-filter-group legend{padding:0;margin-bottom:7px;color:var(--muted);font-size:10px}
+.quest-filter-group .chip{min-height:38px;padding:7px 10px}
+.quest-filter-group .chip[class*=difficulty-]{color:var(--difficulty)}
+.quest-filter-group .chip[class*=difficulty-].selected{border-color:var(--difficulty);box-shadow:inset 0 0 0 1px var(--difficulty);background:#263346}
+.quest-page-controls{max-width:720px;margin-bottom:20px}.quest-page-controls .search-wrap{max-width:430px}
+.quest-activity{border:1px solid var(--line);border-radius:12px;padding:16px;margin:18px 0}.quest-activity h3{margin-bottom:10px}
+.objective-list{padding-left:22px;margin:16px 0}.objective-list li{padding-left:2px;margin:8px 0}.objective-list label{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:8px 0;cursor:pointer;font-size:13px}
+.objective-list input{flex-shrink:0;margin-top:2px}.objective-list input:checked+span{color:#b2c0d2;text-decoration:line-through}
+.quest-hint{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.quest-hint summary{cursor:pointer;min-height:44px;padding:10px 0;color:var(--mint)}.quest-hint p{font-size:13px;line-height:1.7;margin:8px 0 0}
+.quest-safety{border-left:3px solid var(--gold);padding:10px 12px;background:#29271f;color:#e2d6bd;font-size:12px;line-height:1.7}
+.map-legend{max-width:calc(100% - 48px);gap:5px 12px;flex-wrap:wrap}.map-legend>span{white-space:nowrap}.map-stats{bottom:100px}
+@media(max-width:760px){.quest-filter-group .chip{min-height:44px}.map-stats{bottom:115px}.map-legend{max-width:calc(100% - 30px)}.quest-activity{padding:13px}.quest-reward{flex-wrap:wrap}}

@@ -24,8 +24,37 @@ export function adventureSuite(label,createDatabase){
   const f=await fixture(t);await f.adopt('u1');const {item:r}=await f.call('/api/admin/adventures','POST',openRoute(),'admin');
   await f.location(r.checkpoints[1]);await assert.rejects(f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:1}),e=>e.status===409);
   await f.location(r.checkpoints[0]);const first=await f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:0});assert.equal(first.item.progress.visited,1);assert.equal(first.xpAwarded,0);assert.equal(first.item.progress.maxCheckpointAltitudeM,1600);
-  await f.location(r.checkpoints[1]);const results=await Promise.all(Array.from({length:8},()=>f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:1})));assert.equal(results.filter(item=>item.rewarded).length,1);assert.equal(results[0].item.progress.checkpointAscentM,150);assert.equal(results[0].item.progress.maxCheckpointAltitudeM,1750);assert.equal((await f.one('SELECT xp FROM users WHERE id=$1',['u1'])).xp,100);assert.equal((await f.one('SELECT xp FROM pets WHERE user_id=$1',['u1'])).xp,20);assert.equal((await f.one('SELECT COUNT(*) AS n FROM adventure_rewards')).n,1);assert.equal((await f.one('SELECT COUNT(*) AS n FROM pet_rewards')).n,1);
+  f.advance(1);await f.location(r.checkpoints[1]);const results=await Promise.all(Array.from({length:8},()=>f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:1})));assert.equal(results.filter(item=>item.rewarded).length,1);assert.equal(results[0].item.progress.checkpointAscentM,150);assert.equal(results[0].item.progress.maxCheckpointAltitudeM,1750);assert.equal((await f.one('SELECT xp FROM users WHERE id=$1',['u1'])).xp,100);assert.equal((await f.one('SELECT xp FROM pets WHERE user_id=$1',['u1'])).xp,20);assert.equal((await f.one('SELECT COUNT(*) AS n FROM adventure_rewards')).n,1);assert.equal((await f.one('SELECT COUNT(*) AS n FROM pet_rewards')).n,1);
   assert.equal(f.events.filter(e=>e[1]==='adventure.completed').length,1);
+ });
+ test(`${label}: overlapping checkpoint circles reject one fix, ambiguous midpoint and inaccurate center samples`,async t=>{
+  const f=await fixture(t),input=openRoute();input.checkpoints=[{title:'Начальная точка',lng:76.9538,lat:43.258,radius:100,altitudeM:1600},{title:'Следующая точка',lng:76.9548,lat:43.258,radius:100,altitudeM:1610}];
+  const {item:r}=await f.call('/api/admin/adventures','POST',input,'admin'),check=index=>f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:index});
+  assert.equal(r.playable,true);assert.equal(r.planning.checkpointCount,2);assert.ok(r.planning.straightLineDistanceM>70&&r.planning.straightLineDistanceM<90);
+  const midpoint={lng:76.9543,lat:43.258};
+  await f.location(midpoint);await assert.rejects(check(0),e=>e.status===409&&/безопасной/.test(e.message));
+  await f.location(r.checkpoints[0],'u1',{accuracy:50});await assert.rejects(check(0),e=>e.status===409);
+  await f.location(r.checkpoints[0]);assert.equal((await check(0)).item.progress.visited,1);
+  // Both centers are inside the other's 100m circle. Reusing the fix fails.
+  await assert.rejects(check(1),e=>e.status===409);
+  await f.location(r.checkpoints[1]);await assert.rejects(check(1),e=>e.status===409,'even a changed coordinate needs a fresh timestamp');
+  f.advance(1);await f.location(midpoint);await assert.rejects(check(1),e=>e.status===409);
+  await f.location(r.checkpoints[0]);await assert.rejects(check(1),e=>e.status===409,'refreshing an identical coordinate cannot advance');
+  await f.location(r.checkpoints[1]);assert.equal((await check(1)).xpAwarded,100);
+  f.advance(120000);await f.location({lng:76.97,lat:43.26},'u1',{updatedAt:f.now()-100000});assert.equal((await check(1)).replayed,true);assert.equal((await check(0)).xpAwarded,0);
+  assert.equal((await f.one('SELECT count(*) AS n FROM adventure_rewards')).n,1);
+ });
+ test(`${label}: old unverified open routes fail closed without erasing historical check-ins or rewards`,async t=>{
+  const f=await fixture(t),{item:r}=await f.call('/api/admin/adventures','POST',openRoute(),'admin');
+  await f.exec('INSERT INTO adventure_checkins(user_id,route_id,route_version,checkpoint_index,altitude_m,created_at) VALUES($1,$2,$3,0,1600,$4)',['u1',r.id,r.version,f.now()-1000]);
+  await f.exec('INSERT INTO adventure_rewards(user_id,route_id,xp,created_at) VALUES($1,$2,100,$3)',['u1',r.id,f.now()-1000]);
+  await f.exec('UPDATE adventure_routes SET verified_at=NULL,verified_by=NULL WHERE id=$1',[r.id]);
+  const item=(await f.call('/api/adventures')).items.find(x=>x.id===r.id);assert.equal(item.status,'draft');assert.equal(item.playable,false);assert.equal(item.progress.visited,1);assert.equal(item.progress.rewardClaimed,true);
+  await f.location(r.checkpoints[1]);await assert.rejects(f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:1}),e=>e.status===409);
+  assert.equal((await f.one('SELECT count(*) AS n FROM adventure_checkins WHERE route_id=$1',[r.id])).n,1);assert.equal((await f.one('SELECT count(*) AS n FROM adventure_rewards WHERE route_id=$1',[r.id])).n,1);
+  const input=openRoute();input.checkpoints[1]={...input.checkpoints[1],lng:input.checkpoints[0].lng,lat:input.checkpoints[0].lat};
+  await assert.rejects(f.call('/api/admin/adventures','POST',input,'admin'),e=>e.status===409);
+  assert.equal((await f.call('/api/admin/adventures','POST',{...input,status:'draft'},'admin')).item.playable,false);
  });
  test(`${label}: GPS is checked on server for city, age, accuracy, distance and future timestamps`,async t=>{
   const f=await fixture(t),{item:r}=await f.call('/api/admin/adventures','POST',openRoute(),'admin'),check=()=>f.call(`/api/adventures/${r.id}/checkin`,'POST',{version:r.version,checkpointIndex:0});
@@ -73,7 +102,7 @@ export function adventureSuite(label,createDatabase){
   assert.equal((await f.call(path,'POST')).replayed,true,'leaving the team preserves idempotent replay');
  });
  test(`${label}: stale sessions and role changes cannot mutate adventure state`,async t=>{
-  const f=await fixture(t);await f.exec('UPDATE users SET role=$1 WHERE id=$2',['player','admin']);await assert.rejects(f.call('/api/admin/territories','GET',{},'admin'),e=>e.status===403);await f.exec('DELETE FROM sessions WHERE user_id=$1',['u1']);const route=(await f.call('/api/adventures','GET',{},'anonymous')).items.find(r=>r.status==='open');await f.location(route.checkpoints[0]);await assert.rejects(f.call(`/api/adventures/${route.id}/checkin`,'POST',{version:route.version,checkpointIndex:0}),e=>e.status===401);assert.equal((await f.one('SELECT COUNT(*) AS n FROM adventure_checkins')).n,0);
+  const f=await fixture(t),{item:route}=await f.call('/api/admin/adventures','POST',openRoute(),'admin');await f.exec('UPDATE users SET role=$1 WHERE id=$2',['player','admin']);await assert.rejects(f.call('/api/admin/territories','GET',{},'admin'),e=>e.status===403);await f.exec('DELETE FROM sessions WHERE user_id=$1',['u1']);await f.location(route.checkpoints[0]);await assert.rejects(f.call(`/api/adventures/${route.id}/checkin`,'POST',{version:route.version,checkpointIndex:0}),e=>e.status===401);assert.equal((await f.one('SELECT COUNT(*) AS n FROM adventure_checkins')).n,0);
  });
  test(`${label}: repeated editorial seed preserves operator closures and territory configuration`,async t=>{
   const f=await fixture(t);await f.exec("UPDATE adventure_routes SET status='closed',version=7 WHERE id='almaty-park-walk'");await f.exec("UPDATE territory_zones SET radius=222,status='disabled',version=8 WHERE id='almaty-panfilov'");await f.store.transaction(function*(){yield* seedAdventures();});assert.equal((await f.one("SELECT status,version FROM adventure_routes WHERE id='almaty-park-walk'")).version,7);assert.equal((await f.one("SELECT radius FROM territory_zones WHERE id='almaty-panfilov'")).radius,222);

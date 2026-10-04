@@ -1,3 +1,4 @@
+import {REMOVE_QUEST_METADATA_SQL} from './helpers/quest-schema.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -42,7 +43,7 @@ test('a real v1 file migrates without losing accounts, XP, claimed cards or ques
   db.prepare('INSERT INTO audit(actor_id,action,target,created_at) VALUES(?,?,?,?)').run('legacy-player','quest.complete','legacy-quest',at);
   db.exec("INSERT INTO meta(key,value) VALUES('seed_version','1')");db.close();db=null;
   db=openDb(path,{withSnapshot:false});
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys,1);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys,1);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
   const player=db.prepare('SELECT * FROM users WHERE id=?').get('legacy-player');assert.equal(player.xp,170);assert.equal(player.password,'old-password-hash');assert.equal(player.email,'legacy@example.test');
   const org=db.prepare('SELECT * FROM organizations WHERE id=?').get('legacy-org');assert.equal(org.owner_id,'legacy-owner');assert.equal(org.city_id,'almaty');assert.equal(org.version,1);
   const q=db.prepare('SELECT * FROM quests WHERE id=?').get('legacy-quest');assert.equal(q.code_hash,'legacy-code-hash');assert.equal(q.assigned_to,'legacy-player');assert.equal(q.city_id,'almaty');assert.equal(q.verification,'code');
@@ -63,6 +64,7 @@ test('additive SQLite schema 2 upgrade preserves active sessions and signed hist
  try{
   // Remove only the additive feature schema to reconstruct a v2 installation.
   for(const table of [...FEATURE_TABLES,...ADVENTURE_TABLES].reverse())db.exec(`DROP TABLE ${table}`);
+  db.exec(REMOVE_QUEST_METADATA_SQL);
   db.exec('DELETE FROM schema_migrations WHERE version>=3; PRAGMA user_version=2');
   const now=Date.now();
   db.prepare("INSERT INTO users(id,email,name,password,role,xp,created_at) VALUES('existing','existing@example.test','Existing','kept-hash','player',640,?)").run(now);
@@ -70,7 +72,7 @@ test('additive SQLite schema 2 upgrade preserves active sessions and signed hist
   db.prepare("INSERT INTO audit(actor_id,action,target,created_at,metadata,prev_hash,event_hash) VALUES('existing','existing.action','existing',?,'{}','kept-prev','kept-signature')").run(now);
   const before={user:{...db.prepare("SELECT * FROM users WHERE id='existing'").get()},session:{...db.prepare("SELECT * FROM sessions WHERE id='kept-session'").get()},audit:{...db.prepare('SELECT * FROM audit').get()}};
   migrate(db);migrate(db);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);
   assert.deepEqual({...db.prepare("SELECT * FROM users WHERE id='existing'").get()},before.user);
   assert.deepEqual({...db.prepare("SELECT * FROM sessions WHERE id='kept-session'").get()},before.session);
   assert.deepEqual({...db.prepare('SELECT * FROM audit').get()},before.audit);
@@ -83,6 +85,7 @@ test('SQLite schema 3 upgrade keeps pet progress, encrypted history and paid ent
  const db=openDb(':memory:',{withSnapshot:false}),now=1780000000000;
  try{
   for(const table of [...ADVENTURE_TABLES].reverse())db.exec(`DROP TABLE ${table}`);
+  db.exec(REMOVE_QUEST_METADATA_SQL);
   db.exec('DELETE FROM schema_migrations WHERE version>=4; PRAGMA user_version=3');
   db.prepare("INSERT INTO users(id,email,name,password,role,xp,created_at) VALUES('kept','kept@example.test','Игрок','password-hash','player',900,?)").run(now);
   db.prepare("INSERT INTO pets(user_id,name,species,color,xp,created_at,updated_at) VALUES('kept','Друг','fox','amber',420,?,?)").run(now,now);
@@ -92,10 +95,26 @@ test('SQLite schema 3 upgrade keeps pet progress, encrypted history and paid ent
   db.prepare("INSERT INTO billing_entitlements(id,order_id,user_id,plan,starts_at,ends_at) VALUES('entitlement','order','kept','plus',?,?)").run(now,now+2592000000);
   const before=Object.fromEntries(FEATURE_TABLES.map(table=>[table,db.prepare(`SELECT * FROM ${table}`).all().map(row=>({...row}))]));
   migrate(db);migrate(db);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);
   for(const table of FEATURE_TABLES)assert.deepEqual(db.prepare(`SELECT * FROM ${table}`).all().map(row=>({...row})),before[table]);
   for(const table of ADVENTURE_TABLES)assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n,0);
   assert.equal(db.prepare("SELECT xp FROM users WHERE id='kept'").get().xp,900);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+ }finally{db.close();}
+});
+
+test('SQLite schema 5 metadata upgrade preserves quest revisions and rewards and leaves unknown facts empty',()=>{
+ const db=openDb(':memory:',{withSnapshot:false}),now=Date.now();
+ try{
+  db.exec(REMOVE_QUEST_METADATA_SQL);db.exec('DELETE FROM schema_migrations WHERE version=6; PRAGMA user_version=5');
+  db.prepare("INSERT INTO users(id,email,name,password,role,xp,created_at) VALUES('metadata-legacy','metadata-legacy@example.test','Legacy','hash','player',130,?)").run(now);
+  const quest=db.prepare('SELECT * FROM quests ORDER BY id LIMIT 1').get();
+  db.prepare('UPDATE quests SET version=9,updated_at=? WHERE id=?').run(now,quest.id);
+  db.prepare('INSERT INTO completions(user_id,quest_id,xp,created_at) VALUES(?,?,130,?)').run('metadata-legacy',quest.id,now);
+  const before={...db.prepare('SELECT * FROM quests WHERE id=?').get(quest.id)},completion={...db.prepare('SELECT * FROM completions').get()};
+  migrate(db);migrate(db);
+  const {difficulty,difficulty_reason,estimated_minutes,objective_steps_json,hint,...after}=db.prepare('SELECT * FROM quests WHERE id=?').get(quest.id);
+  assert.deepEqual(after,before);assert.deepEqual({difficulty,difficulty_reason,estimated_minutes,objective_steps_json,hint},{difficulty:null,difficulty_reason:'',estimated_minutes:null,objective_steps_json:'[]',hint:''});
+  assert.deepEqual({...db.prepare('SELECT * FROM completions').get()},completion);assert.equal(db.prepare("SELECT xp FROM users WHERE id='metadata-legacy'").get().xp,130);assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
  }finally{db.close();}
 });

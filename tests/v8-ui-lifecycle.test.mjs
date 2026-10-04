@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import * as questUI from '../public/quest-ui.js';
 
 // Execute the shipped UI event handlers, without a network, WebGL or a synthetic
 // copy of their logic. API/local-file barriers make account and dialog races exact.
@@ -9,7 +10,7 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {
 function harness(api){
  const listeners={},nodes=new Map(),timers=[];
  const node=id=>{if(!nodes.has(id))nodes.set(id,{id,innerHTML:'',textContent:'',open:true,isConnected:true,hidden:false,value:'',dataset:{},classList:{toggle(){}},setAttribute(){},querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;},contains(){return false;}});return nodes.get(id);};
- const context=vm.createContext({apiRequest:api,createCompanionFeatures:()=>({invalidate(){}}),createAdventureFeatures:()=>({invalidate(){}}),createTeamPresence:()=>({reset(){},clear(){},update(){}}),document:{getElementById:node,querySelectorAll:()=>[],addEventListener:(type,fn)=>(listeners[type]??=[]).push(fn)},localStorage:{getItem(){}},setTimeout:(fn)=>{timers.push(fn);return timers.length;},clearTimeout(){},setInterval(){},URL,URLSearchParams,AbortController,FormData:class {constructor(form){this.values=Object.entries(form.data||{});}*[Symbol.iterator](){yield* this.values;}},setMapData(){},isNative:()=>false,resizeMap(){},window:{addEventListener(){}},performance,cancelSso(){},clearSession(){}});
+ const context=vm.createContext({...questUI,apiRequest:api,createCompanionFeatures:()=>({invalidate(){}}),createAdventureFeatures:()=>({invalidate(){}}),createTeamPresence:()=>({reset(){},clear(){},update(){}}),document:{getElementById:node,querySelectorAll:()=>[],addEventListener:(type,fn)=>(listeners[type]??=[]).push(fn)},localStorage:{getItem(){}},setTimeout:(fn)=>{timers.push(fn);return timers.length;},clearTimeout(){},setInterval(){},URL,URLSearchParams,AbortController,FormData:class {constructor(form){this.values=Object.entries(form.data||{});}*[Symbol.iterator](){yield* this.values;}},setMapData(){},isNative:()=>false,resizeMap(){},window:{addEventListener(){}},performance,cancelSso(){},clearSession(){}});
  return {context,listeners,node};
 }
 async function app(api){

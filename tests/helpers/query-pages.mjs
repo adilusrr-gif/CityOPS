@@ -21,7 +21,7 @@ export async function queryPageScenarios(t,{db,dialect}){
  });
  await t.test('quest pages preserve completion and unlock state without downloading full exploration history',async()=>{
   const result=await call('/api/quests?q=Pagingfixture&limit=17');assert.equal(result.total,240);assert.equal(result.items.length,17);assert.ok(result.items.every(row=>row.completed&&row.unlocked));assert.ok(result.next_cursor);assert.equal(JSON.stringify(result).includes('code_hash'),false);
-  const personal=await call('/api/quests?q=Pagingfixture%20quest%200239');assert.equal(personal.items[0].completed,false);assert.equal(personal.items[0].unlocked,true);assert.equal((await call('/api/quests?q=Pagingfixture%20quest%200239',null)).items[0].unlocked,false);
+  const personal=await call('/api/quests?q=Pagingfixture%20quest%200239');assert.equal(personal.items[0].completed,false);assert.equal(personal.items[0].unlocked,true);assert.equal((await call('/api/quests?q=Pagingfixture%20quest%200239',null)).total,0);assert.equal((await call('/api/quests?scope=personal',null)).items.find(q=>q.id==='pager-quest-0239').unlocked,false);
   let cursor=result.next_cursor,ids=result.items.map(row=>row.id);while(cursor){const next=await call('/api/quests?q=Pagingfixture&limit=17&cursor='+cursor);ids.push(...next.items.map(row=>row.id));cursor=next.next_cursor;}assert.equal(ids.length,240);assert.equal(new Set(ids).size,240);
  });
  await t.test('progress returns exact totals and recoverable bounded pages; viewport excludes malformed legacy cells',async()=>{

@@ -17,7 +17,7 @@ export async function importSqlitePostgres({db,sqlitePath,auditKey,encryptionKey
  try {
   source.exec('PRAGMA foreign_keys=ON; BEGIN');
   const version=source.prepare('PRAGMA user_version').get().user_version;
-  if(![2,3,4,5].includes(version))throw new Error('Source must be a supported SQLite schema 2, 3, 4 or 5 database; upgrade and verify it first');
+  if(![2,3,4,5,6].includes(version))throw new Error('Source must be a supported SQLite schema 2, 3, 4, 5 or 6 database; upgrade and verify it first');
   const integrity=source.prepare('PRAGMA integrity_check').all();
   if(integrity.length!==1||integrity[0].integrity_check!=='ok'||source.prepare('PRAGMA foreign_key_check').all().length)throw new Error('SQLite source integrity check failed');
   const signed=verifySqliteAudit(source,auditKey);
@@ -64,7 +64,7 @@ export async function importSqlitePostgres({db,sqlitePath,auditKey,encryptionKey
 }
 
 export async function main(argv=process.argv.slice(2)){
- if(argv.includes('--help')){console.log('Usage: node --env-file=.env.enterprise scripts/import-sqlite-postgres.mjs --source /path/cityquest.sqlite\nAccepts SQLite schema 2, 3, 4 or 5. Stop writers first, verify a backup and preserve existing security keys. Destination must be empty; omit --seed during migration.');return;}
+ if(argv.includes('--help')){console.log('Usage: node --env-file=.env.enterprise scripts/import-sqlite-postgres.mjs --source /path/cityquest.sqlite\nAccepts SQLite schema 2, 3, 4, 5 or 6. Stop writers first, verify a backup and preserve existing security keys. Destination must be empty; omit --seed during migration.');return;}
  if(argv.length!==2||argv[0]!=='--source')throw new Error('Usage: import-sqlite-postgres.mjs --source /path/cityquest.sqlite');
  for(const name of ['AUDIT_HMAC_KEY','DATA_ENCRYPTION_KEY'])if(!/^[a-f0-9]{64}$/i.test(process.env[name]||''))throw new Error(`${name} must be the existing 64-hex key`);
  const db=await openPostgres();

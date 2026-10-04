@@ -3,6 +3,8 @@ import {get,all,run,audit} from './store.mjs';
 import {loadProductPolicy} from '../product-policy.mjs';
 
 const DAY=86400000;
+const CHECKPOINT_SEPARATION_M=20;
+const FIX_NOTICE='Дождитесь новой, более точной отметки GPS в безопасной общедоступной зоне этой точки. Не приближайтесь к закрытым или опасным участкам.';
 const ROUTE_NOTICE='Отметки высоты взяты из описаний мест. Это не измеренный GPS-набор высоты и не доказательство физического присутствия. Линии между точками не являются маршрутом навигации. За скорость и большую высоту бонусов нет.';
 const ZONE_NOTICE='Зоны и владение существуют только в игре. Посещение даёт команде 1 очко в зоне за игрока в сутки UTC; при равенстве очков зона спорная. Не вступайте в конфликты, не препятствуйте проходу других людей. GPS клиента можно подменить: очки пилота не дают денежного приза.';
 const object = value => {if(!value||typeof value!=='object'||Array.isArray(value))fail('Ожидается объект');return value;};
@@ -23,6 +25,7 @@ function routeInput(body,old,cityId){
  if(status==='open'&&(body.fieldVerified!==true||body.safetyReviewed!==true))fail('Для открытия подтвердите проверку точек на месте и условий доступа',409);
  if(status==='open'&&!sourceUrls.length)fail('Перед открытием добавьте источники описания маршрута');
  const points=checkpoints(body.checkpoints??(old?parse(old.checkpoints_json):[]),cityId);
+ if(status==='open'&&points.some((p,index)=>index>0&&distance(points[index-1],p)<=CHECKPOINT_SEPARATION_M))fail('Для открытия соседние контрольные точки должны быть дальше 20 м друг от друга',409);
  if(kind==='urban'&&points.some(p=>p.altitudeM!==null))fail('Для городской прогулки отметки горной высоты не используются');
  return {cityId,title:text(body.title??old?.title,'Название маршрута',120,3),description:text(body.description??old?.description??'','Описание',2000,10),kind,difficulty:choice(body.difficulty??old?.difficulty??'easy',['easy','moderate','hard'],'сложность'),cautions,sourceUrls,checkpoints:points,status,statusReason,xp:integer(body.xp??old?.xp??80,'Награда XP',0,500)};
 }
@@ -37,7 +40,12 @@ function* progress(row,userId){
  const reward=userId?yield get('SELECT xp FROM adventure_rewards WHERE user_id=$1 AND route_id=$2',[userId,row.id]):null;
  return summarizeProgress(row,visits,reward);
 }
-function* routeView(row,userId,knownProgress){return{id:row.id,cityId:row.city_id,title:row.title,description:row.description,kind:row.kind,difficulty:row.difficulty,cautions:row.cautions,sourceUrls:parse(row.source_urls),checkpoints:parse(row.checkpoints_json),status:row.status,statusReason:row.status_reason,version:row.version,xp:row.xp,verifiedAt:row.verified_at,progress:knownProgress??(yield* progress(row,userId))};}
+function playable(row){return row.status==='open'&&Number.isSafeInteger(row.verified_at)&&row.verified_at>0&&typeof row.verified_by==='string'&&row.verified_by.length>0;}
+function* routeView(row,userId,knownProgress){
+ const points=parse(row.checkpoints_json),isPlayable=playable(row),unverified=row.status==='open'&&!isPlayable;
+ return{id:row.id,cityId:row.city_id,title:row.title,description:row.description,kind:row.kind,difficulty:row.difficulty,cautions:row.cautions,sourceUrls:parse(row.source_urls),checkpoints:points,status:unverified?'draft':row.status,statusReason:unverified?'Нужна проверка точек на месте и условий доступа оператором. Прохождение отключено.':row.status_reason,version:row.version,xp:row.xp,verifiedAt:row.verified_at,playable:isPlayable,planning:{checkpointCount:points.length,straightLineDistanceM:Math.round(points.reduce((total,p,index)=>total+(index?distance(points[index-1],p):0),0))},progress:knownProgress??(yield* progress(row,userId))};
+}
+
 function* routeList(cityId,userId){
  const rows=yield all('SELECT * FROM adventure_routes WHERE city_id=$1 ORDER BY kind,title,id LIMIT 200',[cityId]),byRoute=new Map(),versions=new Map(rows.map(row=>[row.id,row.version]));
  const visits=userId?yield all('SELECT c.route_id,c.route_version,c.checkpoint_index,c.altitude_m FROM adventure_checkins c JOIN adventure_routes r ON r.id=c.route_id AND r.version=c.route_version WHERE c.user_id=$1 AND r.city_id=$2 ORDER BY c.route_id,c.checkpoint_index',[userId,cityId]):[];
@@ -102,7 +110,33 @@ export function createAdventureRoutes({store,cfg={},env=cfg.env||process.env,now
   const checkin=path.match(/^\/api\/adventures\/([a-zA-Z0-9-]{1,100})\/checkin$/);
   if(checkin&&method==='POST'){
    const body=object(await ctx.readBody()),index=integer(body.checkpointIndex,'Номер точки',0,19);
-   return store.transaction(function*(){yield* store.requireActor(user);const row=yield get('SELECT * FROM adventure_routes WHERE id=$1 FOR UPDATE',[checkin[1]]);if(!row||row.city_id!==cityId)fail('Маршрут не найден в выбранном городе',404);expected(body,row);if(row.status!=='open')fail('Маршрут закрыт для прохождения. '+row.status_reason,409);const points=parse(row.checkpoints_json);if(index>=points.length)fail('Такой точки в маршруте нет');const before=yield* progress(row,user.id);if(index<before.visited)return{item:yield* routeView(row,user.id),replayed:true,rewarded:false,xpAwarded:0,petXpAwarded:0};if(index!==before.visited)fail('Сначала отметьте предыдущую точку',409);const time=now();yield* gps(user.id,row.city_id,points[index],time,policy.gps);yield run('INSERT INTO adventure_checkins(user_id,route_id,route_version,checkpoint_index,altitude_m,created_at) VALUES($1,$2,$3,$4,$5,$6)',[user.id,row.id,row.version,index,points[index].altitudeM,time]);const reward=index===points.length-1?yield* awardRoute(user.id,row,time,policy.adventures.petXp):{rewarded:false,xpAwarded:0,petXpAwarded:0};return{item:yield* routeView(row,user.id),replayed:false,...reward};});
+   return store.transaction(function*(){
+    yield* store.requireActor(user);
+    const row=yield get('SELECT * FROM adventure_routes WHERE id=$1 FOR UPDATE',[checkin[1]]);
+    if(!row||row.city_id!==cityId)fail('Маршрут не найден в выбранном городе',404);
+    expected(body,row);
+    if(!playable(row))fail('Маршрут закрыт для прохождения: требуется проверка оператором или снятие ограничений. '+row.status_reason,409);
+    const points=parse(row.checkpoints_json);
+    if(index>=points.length)fail('Такой точки в маршруте нет');
+    const before=yield* progress(row,user.id);
+    // Safe retries remain idempotent and do not demand another position sample.
+    if(index<before.visited)return{item:yield* routeView(row,user.id),replayed:true,rewarded:false,xpAwarded:0,petXpAwarded:0};
+    if(index!==before.visited)fail('Сначала отметьте предыдущую точку',409);
+    const time=now(),position=yield* gps(user.id,row.city_id,points[index],time,policy.gps);
+    if(index>0){
+     const previous=yield get('SELECT created_at FROM adventure_checkins WHERE user_id=$1 AND route_id=$2 AND route_version=$3 AND checkpoint_index=$4',[user.id,row.id,row.version,index-1]);
+     if(!previous||position.updated_at<=previous.created_at)fail(FIX_NOTICE,409);
+    }
+    // GPS circles may overlap. Require a center-distance advantage larger than
+    // both reported uncertainty radii (and at least 20m) over adjacent points.
+    // The same coordinate cannot pass this inequality for two adjacent centers.
+    // This is an anti-replay heuristic, never evidence of physical presence.
+    const targetDistance=distance(position,points[index]),margin=Math.max(CHECKPOINT_SEPARATION_M,2*position.accuracy);
+    for(const adjacent of [points[index-1],points[index+1]])if(adjacent&&distance(position,adjacent)-targetDistance<=margin)fail(FIX_NOTICE,409);
+    yield run('INSERT INTO adventure_checkins(user_id,route_id,route_version,checkpoint_index,altitude_m,created_at) VALUES($1,$2,$3,$4,$5,$6)',[user.id,row.id,row.version,index,points[index].altitudeM,time]);
+    const reward=index===points.length-1?yield* awardRoute(user.id,row,time,policy.adventures.petXp):{rewarded:false,xpAwarded:0,petXpAwarded:0};
+    return{item:yield* routeView(row,user.id),replayed:false,...reward};
+   });
   }
   const visit=path.match(/^\/api\/territories\/([a-zA-Z0-9-]{1,100})\/visit$/);
   if(visit&&method==='POST'){
