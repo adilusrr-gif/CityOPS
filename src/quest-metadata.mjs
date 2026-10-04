@@ -1,6 +1,6 @@
 import {choice,fail,text} from './domain.mjs';
 
-export const HIDDEN_QUEST_TITLE='Скрытый персональный квест';
+export const HIDDEN_QUEST_TITLE='Скрытая история';
 export const QUEST_DIFFICULTIES=Object.freeze(['easy','moderate','hard']);
 export const QUEST_METADATA_LIMITS=Object.freeze({steps:8,stepText:240,stepId:40,hint:500,reason:500,minutes:240});
 
