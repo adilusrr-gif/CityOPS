@@ -56,6 +56,7 @@ jobs:
           node deploy/local/init-env.mjs
           docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml config --quiet
           docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml up --build --wait --wait-timeout 180 app1 app2 proxy
+          docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml exec -T proxy sh -ec 'test "$(id -u)" = 1000; test -z "$(getcap /usr/bin/caddy)"; grep -Eq "^CapBnd:[[:space:]]+0+$" /proc/1/status; grep -Eq "^NoNewPrivs:[[:space:]]+1$" /proc/1/status'
           curl --fail --retry 5 --retry-all-errors http://127.0.0.1:8080/api/ready
           docker compose --env-file .env.enterprise.local -f compose.enterprise.yaml stop app1
           sleep 4
